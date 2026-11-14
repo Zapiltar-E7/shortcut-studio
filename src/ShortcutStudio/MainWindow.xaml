@@ -1,0 +1,537 @@
+<Window x:Class="ShortcutStudio.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:ShortcutStudio"
+        Title="Shortcut Studio" Width="1320" Height="880" MinWidth="1000" MinHeight="640"
+        Background="{StaticResource Bg}" WindowStartupLocation="CenterScreen"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display" FontFamily="Segoe UI" FontSize="13">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolVis"/>
+        <local:NullToVisibility x:Key="NullVis"/>
+        <local:NullToVisibility x:Key="NotNullVis" Invert="True"/>
+        <local:CountToVisibility x:Key="CountVis"/>
+        <local:AchSetText x:Key="SetText"/>
+
+        <!-- A collapsible achievement-set header (Base Game / DLC: name) in the achievement list -->
+        <Style x:Key="SetExpander" TargetType="Expander">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <DockPanel>
+                            <ToggleButton DockPanel.Dock="Top" Focusable="False" Cursor="Hand" Content="{TemplateBinding Header}"
+                                          IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="b" Background="{StaticResource Panel2}" CornerRadius="3" Padding="10,7" Margin="0,6,0,2">
+                                            <DockPanel>
+                                                <Path x:Name="chev" Data="M0,0 L4,4 L8,0" Stroke="{StaticResource TextDim}" StrokeThickness="1.5"
+                                                      Width="8" Height="5" VerticalAlignment="Center" Margin="0,0,10,0" RenderTransformOrigin="0.5,0.5"/>
+                                                <ContentPresenter VerticalAlignment="Center"/>
+                                            </DockPanel>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsChecked" Value="False">
+                                                <Setter TargetName="chev" Property="RenderTransform">
+                                                    <Setter.Value>
+                                                        <RotateTransform Angle="-90"/>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Trigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="b" Property="Background" Value="{StaticResource InputHover}"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ContentPresenter x:Name="body" Visibility="Collapsed"/>
+                        </DockPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="True">
+                                <Setter TargetName="body" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Top bar -->
+        <Border Background="#11141A" Padding="16,10">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                    <TextBlock Text="SHORTCUT STUDIO" FontSize="15" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                    <TextBlock Text="Account" Style="{StaticResource Dim}" VerticalAlignment="Center" Margin="28,0,8,0"/>
+                    <ComboBox x:Name="AccountBox" Width="230" Height="30" SelectionChanged="Account_Changed"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
+                    <Border x:Name="PluginPill" CornerRadius="10" Padding="10,3" Margin="0,0,12,0" VerticalAlignment="Center" Background="#3A2A1A">
+                        <TextBlock x:Name="PluginText" FontSize="11" Foreground="#E0B070" Text="Plugin not installed"/>
+                    </Border>
+                    <Button Content="Settings" Click="Settings_Click" Margin="0,0,8,0"/>
+                    <Button Content="Open Steam folder" Click="OpenGrid_Click"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="290"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Game list -->
+            <Border Background="{StaticResource Panel}" BorderBrush="#0E1117" BorderThickness="0,0,1,0">
+                <DockPanel Margin="10">
+                    <Button DockPanel.Dock="Top" Style="{StaticResource Primary}" Content="+  Add a non-Steam game" Click="AddGame_Click" Padding="12,8" Margin="0,0,0,10"/>
+                    <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+                        <TextBox x:Name="FilterBox" TextChanged="Filter_Changed"/>
+                        <TextBlock x:Name="FilterHint" Text="Search by name" Style="{StaticResource Dim}" Margin="9,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                    </Grid>
+                    <TextBlock DockPanel.Dock="Top" x:Name="CountText" Style="{StaticResource Label}" Margin="2,0,0,6"/>
+                    <ListBox x:Name="GameList" SelectionChanged="GameList_Changed" VirtualizingPanel.IsVirtualizing="True">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="local:GameVm">
+                                <DockPanel>
+                                    <Border Width="24" Height="24" CornerRadius="2" Background="#2A3646" Margin="0,0,9,0" ClipToBounds="True">
+                                        <Image Source="{Binding IconImage}" Stretch="UniformToFill"/>
+                                    </Border>
+                                    <Ellipse DockPanel.Dock="Right" Width="7" Height="7" Fill="{StaticResource Accent}" VerticalAlignment="Center"
+                                             Visibility="{Binding IsDirty, Converter={StaticResource BoolVis}}" ToolTip="Unsaved changes"/>
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                </DockPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+
+            <!-- Empty state -->
+            <StackPanel Grid.Column="1" x:Name="EmptyState" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="420">
+                <TextBlock Text="Pick a game on the left, or add one" Style="{StaticResource SectionTitle}" HorizontalAlignment="Center"/>
+                <TextBlock Style="{StaticResource Dim}" TextAlignment="Center" Margin="0,8,0,0"
+                           Text="Add any program as a non-Steam game, then give it a name, artwork, a store description and achievements so it looks like an official Steam game."/>
+            </StackPanel>
+
+            <!-- Editor -->
+            <Grid Grid.Column="1" x:Name="Editor" Visibility="Collapsed" Background="{StaticResource PageGradient}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Library page preview: hero + logo, as Steam draws it -->
+                <Grid x:Name="Banner" Height="250" ClipToBounds="True" Background="#0B0E13">
+                    <Image Source="{Binding HeroImage}" Stretch="UniformToFill" VerticalAlignment="Center"/>
+                    <TextBlock Text="No hero image" Style="{StaticResource Dim}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Visibility="{Binding HeroImage, Converter={StaticResource NullVis}}"/>
+                    <Rectangle Height="80" VerticalAlignment="Bottom">
+                        <Rectangle.Fill>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#00000000" Offset="0"/>
+                                <GradientStop Color="#88000000" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Rectangle.Fill>
+                    </Rectangle>
+                    <!-- Logo box: Steam sizes the logo to fit Width% × Height% of the hero, pinned to a corner -->
+                    <Grid x:Name="LogoArea" Margin="40,24,40,24" SizeChanged="LogoArea_SizeChanged">
+                        <Image x:Name="LogoPreview" Source="{Binding LogoImage}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+                        <TextBlock Text="{Binding Name}" FontSize="34" FontWeight="Bold" Foreground="White" VerticalAlignment="Bottom"
+                                   Visibility="{Binding LogoImage, Converter={StaticResource NullVis}}">
+                            <TextBlock.Effect>
+                                <DropShadowEffect BlurRadius="8" ShadowDepth="0" Opacity="0.9"/>
+                            </TextBlock.Effect>
+                        </TextBlock>
+                    </Grid>
+                </Grid>
+
+                <!-- Play bar -->
+                <Border Grid.Row="1" Background="#CC0E141B" Padding="20,10">
+                    <DockPanel>
+                        <Button Style="{StaticResource Play}" Content="▶  PLAY" Padding="26,9" FontSize="14" Click="Play_Click" ToolTip="Launch the game the way Steam would (from its start folder, with its launch options)"/>
+                        <StackPanel Margin="20,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="ACHIEVEMENTS" Style="{StaticResource Label}" Margin="0"/>
+                            <TextBlock Text="{Binding UnlockSummary}" FontSize="12"/>
+                        </StackPanel>
+                        <StackPanel Margin="24,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="APP ID" Style="{StaticResource Label}" Margin="0"/>
+                            <TextBlock Text="{Binding AppIdText}" FontSize="12"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <Button Content="Import from Steam…" Click="ImportSteam_Click" Margin="0,0,8,0"/>
+                            <Button Content="SteamGridDB…" Click="SgdbAll_Click" Margin="0,0,8,0"/>
+                            <Button x:Name="BannerBtn" Content="▲ Hide banner" Click="Banner_Click"
+                                    ToolTip="Hide or show the hero banner, to make room for the editor"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <TabControl Grid.Row="2" x:Name="Tabs">
+                    <!-- DETAILS -->
+                    <TabItem Header="DETAILS">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="24,8,24,24" MaxWidth="820" HorizontalAlignment="Left">
+                                <TextBlock Text="NAME" Style="{StaticResource Label}"/>
+                                <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" FontSize="15"/>
+                                <TextBlock Text="TARGET (the program Steam starts)" Style="{StaticResource Label}"/>
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Content="Browse…" Margin="6,0,0,0" Click="BrowseExe_Click"/>
+                                    <TextBox Text="{Binding Exe, UpdateSourceTrigger=PropertyChanged}"/>
+                                </DockPanel>
+                                <TextBlock Text="START IN" Style="{StaticResource Label}"/>
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Content="Browse…" Margin="6,0,0,0" Click="BrowseDir_Click"/>
+                                    <TextBox Text="{Binding StartDir, UpdateSourceTrigger=PropertyChanged}"/>
+                                </DockPanel>
+                                <TextBlock Text="LAUNCH OPTIONS" Style="{StaticResource Label}"/>
+                                <TextBox Text="{Binding LaunchOptions, UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"/>
+                                <!-- Launch picker, like Steam's "Select launch option" for real games -->
+                                <DockPanel Margin="0,10,0,4">
+                                    <Button DockPanel.Dock="Right" Content="+ Add option" Click="LaunchAdd_Click" Padding="10,4"/>
+                                    <TextBlock Text="LAUNCH MENU" Style="{StaticResource Label}" Margin="0" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <Grid Margin="0,0,0,2" Visibility="{Binding LaunchChoices.Count, Converter={StaticResource CountVis}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="170"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="160"/>
+                                        <ColumnDefinition Width="170"/>
+                                        <ColumnDefinition Width="34"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Name shown" Style="{StaticResource Dim}"/>
+                                    <TextBlock Grid.Column="1" Text="Target (blank = the one above)" Style="{StaticResource Dim}" Margin="6,0,0,0"/>
+                                    <TextBlock Grid.Column="2" Text="Start in (blank = above)" Style="{StaticResource Dim}" Margin="6,0,0,0"/>
+                                    <TextBlock Grid.Column="3" Text="Arguments" Style="{StaticResource Dim}" Margin="6,0,0,0"/>
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding LaunchChoices}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="local:LaunchOptionVm">
+                                            <Grid Margin="0,0,0,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="170"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="170"/>
+                                                    <ColumnDefinition Width="34"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
+                                                <TextBox Grid.Column="1" Margin="6,0,0,0" Text="{Binding Exe, UpdateSourceTrigger=PropertyChanged}"/>
+                                                <TextBox Grid.Column="2" Margin="6,0,0,0" Text="{Binding StartDir, UpdateSourceTrigger=PropertyChanged}"/>
+                                                <TextBox Grid.Column="3" Margin="6,0,0,0" Text="{Binding Args, UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas"/>
+                                                <Button Grid.Column="4" Content="✕" Margin="6,0,0,0" Padding="0" Click="LaunchRemove_Click" Tag="{Binding}" ToolTip="Remove this option"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource Link}" Content="Ask every time" Click="LaunchForget_Click" VerticalAlignment="Center"
+                                            Visibility="{Binding HasRememberedLaunch, Converter={StaticResource BoolVis}}"/>
+                                    <TextBlock Text="{Binding RememberedLaunchText}" Style="{StaticResource Dim}"/>
+                                </DockPanel>
+
+                                <TextBlock Text="COLLECTIONS (comma separated)" Style="{StaticResource Label}"/>
+                                <TextBox Text="{Binding Tags, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Style="{StaticResource Dim}" Margin="0,4,0,0" Text="Newer Steam keeps collections in the cloud and may ignore these; they still work for Big Picture and older clients."/>
+
+                                <TextBlock Text="PLAY TIME (hours)" Style="{StaticResource Label}"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBox Text="{Binding PlaytimeHours, UpdateSourceTrigger=LostFocus}" Width="110"/>
+                                    <TextBlock Text="{Binding LastPlayedText}" Style="{StaticResource Dim}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource Dim}" Margin="0,4,0,0"
+                                           Text="Steam records this itself whenever you play through it, and shows it on the game page and in the library. Set it here to carry over hours from before; saving closes and restarts Steam."/>
+
+                                <StackPanel Margin="0,14,0,0">
+                                    <CheckBox Content="Allow the Steam Overlay while running" IsChecked="{Binding AllowOverlay}"/>
+                                    <CheckBox Content="Use the Desktop configuration in Steam Input" IsChecked="{Binding AllowDesktopConfig}"/>
+                                    <CheckBox Content="Hide this game in the library" IsChecked="{Binding Hidden}"/>
+                                </StackPanel>
+
+                                <Border BorderBrush="#4A2A2A" BorderThickness="1" CornerRadius="3" Padding="14" Margin="0,26,0,0">
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Content="Remove from Steam" Click="DeleteGame_Click" Foreground="#F08080"/>
+                                        <StackPanel>
+                                            <TextBlock Text="Remove this game" FontWeight="SemiBold"/>
+                                            <TextBlock Style="{StaticResource Dim}" Text="Removes the shortcut, its artwork, description and achievements from Steam when you save. The game's own files are not touched."/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ARTWORK -->
+                    <TabItem Header="ARTWORK">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="24,12,24,24">
+                                <ItemsControl ItemsSource="{Binding Art}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="local:ArtSlotVm">
+                                            <Border Background="{StaticResource Panel2}" CornerRadius="4" Padding="12" Margin="0,0,14,14" Width="300">
+                                                <StackPanel>
+                                                    <DockPanel>
+                                                        <TextBlock DockPanel.Dock="Right" Text="{Binding SizeText}" Style="{StaticResource Dim}"/>
+                                                        <TextBlock Text="{Binding Spec.Label}" FontWeight="SemiBold"/>
+                                                    </DockPanel>
+                                                    <TextBlock Text="{Binding Spec.Hint}" Style="{StaticResource Dim}" Margin="0,2,0,8"/>
+                                                    <Border Height="170" CornerRadius="3" Background="#10141A" ClipToBounds="True" AllowDrop="True"
+                                                            Drop="Art_Drop" Tag="{Binding}">
+                                                        <Grid>
+                                                            <Rectangle Stroke="#3D4E61" StrokeDashArray="4 3" RadiusX="3" RadiusY="3"/>
+                                                            <TextBlock Text="Drop an image here" Style="{StaticResource Dim}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            <Image Source="{Binding Image}" Stretch="Uniform" Margin="4" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                        </Grid>
+                                                    </Border>
+                                                    <WrapPanel Margin="0,8,0,0">
+                                                        <Button Content="Choose file…" Click="ArtFile_Click" Tag="{Binding}" Margin="0,0,6,0"/>
+                                                        <Button Content="SteamGridDB…" Click="ArtSgdb_Click" Tag="{Binding}" Margin="0,0,6,0"/>
+                                                        <Button Content="Remove" Click="ArtRemove_Click" Tag="{Binding}"/>
+                                                    </WrapPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <Border Background="{StaticResource Panel2}" CornerRadius="4" Padding="14" MaxWidth="614" HorizontalAlignment="Left">
+                                    <StackPanel>
+                                        <TextBlock Text="Logo position" FontWeight="SemiBold"/>
+                                        <TextBlock Style="{StaticResource Dim}" Text="Where Steam draws the logo over the hero, and how much of it the logo may fill. The preview at the top updates as you change these."/>
+                                        <Grid Margin="0,10,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="110"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="50"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition/>
+                                                <RowDefinition/>
+                                                <RowDefinition/>
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Text="Pinned to" VerticalAlignment="Center"/>
+                                            <ComboBox Grid.Column="1" Grid.ColumnSpan="2" Height="30" x:Name="PinBox" SelectedValuePath="Tag"
+                                                      SelectedValue="{Binding LogoPinned}" Margin="0,4">
+                                                <ComboBoxItem Content="Bottom left" Tag="BottomLeft"/>
+                                                <ComboBoxItem Content="Top left" Tag="UpperLeft"/>
+                                                <ComboBoxItem Content="Centre" Tag="CenterCenter"/>
+                                                <ComboBoxItem Content="Top centre" Tag="UpperCenter"/>
+                                                <ComboBoxItem Content="Bottom centre" Tag="BottomCenter"/>
+                                            </ComboBox>
+                                            <TextBlock Grid.Row="1" Text="Max width" VerticalAlignment="Center"/>
+                                            <Slider Grid.Row="1" Grid.Column="1" Minimum="10" Maximum="100" Value="{Binding LogoWidth}" VerticalAlignment="Center" Margin="0,8"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding LogoWidth, StringFormat={}{0:0}%}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Row="2" Text="Max height" VerticalAlignment="Center"/>
+                                            <Slider Grid.Row="2" Grid.Column="1" Minimum="10" Maximum="100" Value="{Binding LogoHeight}" VerticalAlignment="Center" Margin="0,8"/>
+                                            <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding LogoHeight, StringFormat={}{0:0}%}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- STORE PAGE -->
+                    <TabItem Header="STORE PAGE">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <Grid Margin="24,8,24,24">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="280"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,20,0">
+                                    <DockPanel Margin="0,10,0,0">
+                                        <Button DockPanel.Dock="Left" Content="Fetch info…" Style="{StaticResource Primary}" Click="FetchInfo_Click" Margin="0,0,12,0"
+                                                ToolTip="Fill the description and details from the Steam store or Wikipedia"/>
+                                        <TextBlock Text="{Binding SourceText}" Style="{StaticResource Dim}" VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                    <TextBlock Text="SHORT DESCRIPTION (the large intro line)" Style="{StaticResource Label}"/>
+                                    <TextBox Style="{StaticResource Multi}" Height="70" Text="{Binding ShortDescription, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Text="ABOUT THIS GAME (plain text or Steam store HTML)" Style="{StaticResource Label}"/>
+                                    <TextBox Style="{StaticResource Multi}" Height="340" FontFamily="Consolas" FontSize="12"
+                                             Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="DEVELOPER" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding Developer, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Text="PUBLISHER" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding Publisher, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Text="RELEASE DATE" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding ReleaseDate, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Text="GENRES (comma separated)" Style="{StaticResource Label}"/>
+                                    <TextBox Text="{Binding Genres, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Style="{StaticResource Dim}" Margin="0,14,0,0"
+                                               Text="These show in an About this game section on the game's library page, through the Shortcut Studio plugin for Millennium."/>
+                                </StackPanel>
+                            </Grid>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ACHIEVEMENTS -->
+                    <TabItem Header="ACHIEVEMENTS">
+                        <Grid Margin="24,12,24,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="340"/>
+                            </Grid.ColumnDefinitions>
+                            <DockPanel Margin="0,0,16,0">
+                                <Border DockPanel.Dock="Top" Background="#1E3522" CornerRadius="3" Padding="10,7" Margin="0,0,0,8"
+                                        Visibility="{Binding HasTrophySource, Converter={StaticResource BoolVis}}">
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource Link}" Content="Stop syncing" Click="StopSync_Click" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                        <TextBlock Text="{Binding TrophySourceText}" Foreground="#8FD08F" FontSize="12" TextWrapping="Wrap"/>
+                                    </DockPanel>
+                                </Border>
+                                <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                                    <Button Content="Emulator trophies…" Style="{StaticResource Primary}" Click="EmulatorTrophies_Click" Margin="0,0,10,0"
+                                            ToolTip="Import an RPCS3 or shadPS4 trophy list and keep unlocks in sync"/>
+                                    <Button Content="RetroAchievements…" Style="{StaticResource Primary}" Click="RetroAchievements_Click" Margin="0,0,10,0"
+                                            ToolTip="Import a RetroAchievements set (RetroArch, PCSX2, DuckStation, PPSSPP, Dolphin…) and keep unlocks in sync"/>
+                                    <Button Content="+ Add" Click="AchAdd_Click" Margin="0,0,6,0"/>
+                                    <Button Content="Remove" Click="AchRemove_Click" Margin="0,0,6,0"/>
+                                    <Button Content="▲" Click="AchUp_Click" Margin="0,0,4,0" ToolTip="Move up"/>
+                                    <Button Content="▼" Click="AchDown_Click" Margin="0,0,14,0" ToolTip="Move down"/>
+                                    <Button Content="Unlock all" Click="AchUnlockAll_Click" Margin="0,0,6,0"/>
+                                    <Button Content="Lock all" Click="AchLockAll_Click" Margin="0,0,6,0"/>
+                                    <Button Content="Remove all" Click="AchClear_Click"/>
+                                </WrapPanel>
+                                <ListBox x:Name="AchList" ItemsSource="{Binding Achievements}" SelectionMode="Extended" SelectionChanged="AchList_SelectionChanged">
+                                    <ListBox.ContextMenu>
+                                        <ContextMenu Opened="AchSetMenu_Opened">
+                                            <MenuItem Header="Move to set"/>
+                                        </ContextMenu>
+                                    </ListBox.ContextMenu>
+                                    <!-- Once a game has DLC sets, achievements group under collapsible set headers -->
+                                    <ListBox.GroupStyle>
+                                        <GroupStyle>
+                                            <GroupStyle.ContainerStyle>
+                                                <Style TargetType="GroupItem">
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="GroupItem">
+                                                                <Expander Style="{StaticResource SetExpander}" IsExpanded="True"
+                                                                          Loaded="SetExpander_Loaded" Expanded="SetExpander_Changed" Collapsed="SetExpander_Changed">
+                                                                    <Expander.Header>
+                                                                        <DockPanel>
+                                                                            <TextBlock DockPanel.Dock="Right" Style="{StaticResource Dim}" FontSize="12" VerticalAlignment="Center" Margin="12,0,0,0"
+                                                                                       Text="{Binding ItemCount, Converter={StaticResource SetText}, ConverterParameter=count}"/>
+                                                                            <Border Background="{StaticResource Accent}" CornerRadius="2" Padding="5,1" Margin="0,0,8,0" VerticalAlignment="Center"
+                                                                                    Visibility="{Binding Name, Converter={StaticResource SetText}, ConverterParameter=tag}">
+                                                                                <TextBlock Text="DLC" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                                                                            </Border>
+                                                                            <TextBlock Text="{Binding Name, Converter={StaticResource SetText}}" FontWeight="SemiBold"
+                                                                                       Foreground="{StaticResource Text}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                                        </DockPanel>
+                                                                    </Expander.Header>
+                                                                    <ItemsPresenter/>
+                                                                </Expander>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </GroupStyle.ContainerStyle>
+                                        </GroupStyle>
+                                    </ListBox.GroupStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate DataType="local:AchievementVm">
+                                            <DockPanel Margin="0,2">
+                                                <Border Width="48" Height="48" Background="#10141A" Margin="0,0,12,0" CornerRadius="2" ClipToBounds="True">
+                                                    <Image Source="{Binding ListIcon}" Stretch="UniformToFill"/>
+                                                </Border>
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding Description}" Style="{StaticResource Dim}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"/>
+                                                    <TextBlock Text="{Binding Subtitle}" FontSize="11" Foreground="#6E9AC0"/>
+                                                </StackPanel>
+                                            </DockPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </DockPanel>
+
+                            <Border Grid.Column="1" Background="{StaticResource Panel2}" CornerRadius="4" Padding="14"
+                                    DataContext="{Binding SelectedItem, ElementName=AchList}"
+                                    Visibility="{Binding Converter={StaticResource NotNullVis}}">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <StackPanel Margin="0,0,14,0">
+                                                <Border Width="64" Height="64" Background="#10141A" CornerRadius="2" ClipToBounds="True">
+                                                    <Image Source="{Binding Icon}" Stretch="UniformToFill"/>
+                                                </Border>
+                                                <Button Content="Unlocked…" FontSize="11" Padding="6,3" Margin="0,4,0,0" Click="AchIcon_Click" Tag="color"/>
+                                            </StackPanel>
+                                            <StackPanel>
+                                                <Border Width="64" Height="64" Background="#10141A" CornerRadius="2" ClipToBounds="True">
+                                                    <Image Source="{Binding IconGray}" Stretch="UniformToFill"/>
+                                                </Border>
+                                                <Button Content="Locked…" FontSize="11" Padding="6,3" Margin="0,4,0,0" Click="AchIcon_Click" Tag="gray"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                        <TextBlock Style="{StaticResource Dim}" Margin="0,6,0,0" Text="Icons are 64×64 in Steam. Without a locked icon, the unlocked one is shown in grey."/>
+                                        <TextBlock Text="NAME" Style="{StaticResource Label}"/>
+                                        <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBlock Text="DESCRIPTION" Style="{StaticResource Label}"/>
+                                        <TextBox Style="{StaticResource Multi}" Height="64" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBlock Text="GLOBAL UNLOCK % (rarity, optional)" Style="{StaticResource Label}"/>
+                                        <TextBox Text="{Binding PercentText, UpdateSourceTrigger=LostFocus}" Width="90" HorizontalAlignment="Left"/>
+                                        <TextBlock Text="ACHIEVEMENT SET" Style="{StaticResource Label}"/>
+                                        <TextBlock x:Name="DlcMulti" Foreground="#6E9AC0" FontSize="12" Margin="0,0,0,4" Visibility="Collapsed"/>
+                                        <CheckBox x:Name="DlcCheck" Content="DLC achievement" IsChecked="{Binding IsDlc}" Click="DlcCheck_Click" Margin="0,2,0,6"
+                                                  ToolTip="Steam groups achievements into sets: the base game, then one set per DLC"/>
+                                        <DockPanel IsEnabled="{Binding IsDlc}">
+                                            <Button DockPanel.Dock="Right" Content="▾" Padding="9,4" Margin="6,0,0,0" Click="DlcPick_Click"
+                                                    ToolTip="Pick a DLC set this game already has"/>
+                                            <TextBox x:Name="DlcName" Text="{Binding Dlc, UpdateSourceTrigger=LostFocus}" KeyDown="DlcName_KeyDown" GotFocus="DlcName_GotFocus" LostFocus="DlcName_LostFocus"
+                                                     ToolTip="The DLC's name, as Steam shows it after &quot;DLC:&quot;. Achievements with the same name form one set."/>
+                                        </DockPanel>
+                                        <TextBlock Style="{StaticResource Dim}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                                   Text="Type the DLC's name and press Enter. Select several achievements (Ctrl- or Shift-click) to set them all at once."/>
+                                        <CheckBox Content="Hidden until unlocked" IsChecked="{Binding Hidden}" Margin="0,12,0,4"/>
+                                        <CheckBox Content="{Binding ProgressLabel}" IsChecked="{Binding ShowProgress}" Visibility="{Binding ProgressVisibility}" Margin="0,0,0,4"
+                                                  ToolTip="This achievement counts several things in the game's saves. Steam shows how far along you are on the locked achievement."/>
+                                        <CheckBox Content="Unlocked" IsChecked="{Binding Unlocked}"/>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Border>
+                        </Grid>
+                    </TabItem>
+                </TabControl>
+            </Grid>
+        </Grid>
+
+        <!-- Status bar -->
+        <Border Grid.Row="2" Background="#11141A" Padding="16,9">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                    <Button x:Name="RevertBtn" Content="Discard changes" Click="Revert_Click" Margin="0,0,8,0"/>
+                    <Button x:Name="SaveBtn" Style="{StaticResource Primary}" Content="Save to Steam" Click="Save_Click" Padding="18,7"/>
+                </StackPanel>
+                <TextBlock x:Name="StatusText" Style="{StaticResource Dim}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"/>
+            </DockPanel>
+        </Border>
+
+        <!-- Busy overlay -->
+        <Grid x:Name="Busy" Grid.RowSpan="3" Background="#B0000000" Visibility="Collapsed">
+            <Border Background="{StaticResource Panel}" CornerRadius="6" Padding="28,20" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel>
+                    <TextBlock x:Name="BusyText" Text="Working…" FontSize="14" HorizontalAlignment="Center"/>
+                    <ProgressBar IsIndeterminate="True" Height="4" Width="260" Margin="0,12,0,0" Foreground="{StaticResource Accent}" Background="#2A3646" BorderThickness="0"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

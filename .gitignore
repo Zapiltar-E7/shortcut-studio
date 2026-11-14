@@ -1,0 +1,21 @@
+# Build output
+bin/
+obj/
+src/publish/
+/Shortcut Studio.exe
+
+# Plugin: dependencies and build output (rebuilt with npm run build + stage.sh)
+plugin/node_modules/
+plugin/.millennium/
+plugin/dist/
+
+# Game art made for personal achievement icons (not part of the app)
+/AchievementPNGS/
+/botw-*/
+
+# Editors and OS
+.vs/
+.vscode/
+*.user
+Thumbs.db
+desktop.ini

@@ -1,0 +1,54 @@
+<Window x:Class="ShortcutStudio.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Settings" Width="560" SizeToContent="Height" WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Background="{StaticResource Panel}" FontFamily="Segoe UI" FontSize="13"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+    <StackPanel Margin="20">
+        <TextBlock Text="SteamGridDB" Style="{StaticResource SectionTitle}"/>
+        <TextBlock Style="{StaticResource Dim}" Margin="0,4,0,0">
+            A free key lets you browse community artwork. Get one at
+            <Hyperlink Click="KeyLink_Click" Foreground="{StaticResource Accent}">steamgriddb.com/profile/preferences/api</Hyperlink>.
+        </TextBlock>
+        <TextBlock Text="API KEY" Style="{StaticResource Label}"/>
+        <TextBox x:Name="KeyBox" FontFamily="Consolas"/>
+
+        <TextBlock Text="RetroAchievements" Style="{StaticResource SectionTitle}" Margin="0,24,0,0"/>
+        <TextBlock Style="{StaticResource Dim}" Margin="0,4,0,0">
+            For games played in RetroArch, PCSX2, DuckStation, PPSSPP, Dolphin and other emulators with RetroAchievements.
+            Your Web API key is on
+            <Hyperlink Click="RaLink_Click" Foreground="{StaticResource Accent}">retroachievements.org/settings</Hyperlink> under Keys.
+        </TextBlock>
+        <Grid Margin="0,4,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="180"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="USERNAME" Style="{StaticResource Label}"/>
+                <TextBox x:Name="RaUserBox"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+                <TextBlock Text="WEB API KEY" Style="{StaticResource Label}"/>
+                <TextBox x:Name="RaKeyBox" FontFamily="Consolas"/>
+            </StackPanel>
+        </Grid>
+
+        <TextBlock Text="Steam plugin" Style="{StaticResource SectionTitle}" Margin="0,24,0,0"/>
+        <TextBlock Style="{StaticResource Dim}" Margin="0,4,0,0"
+                   Text="Steam has nowhere to show a non-Steam game's description or achievements. The Shortcut Studio plugin for Millennium adds them to the game's library page, styled like Steam's own panels. You can unlock achievements there by clicking them."/>
+        <TextBlock x:Name="PluginState" Margin="0,10,0,0"/>
+        <Button x:Name="InstallBtn" Content="Install / repair the plugin" HorizontalAlignment="Left" Margin="0,10,0,0" Click="Install_Click"/>
+
+        <TextBlock Text="Data" Style="{StaticResource SectionTitle}" Margin="0,24,0,0"/>
+        <TextBlock Style="{StaticResource Dim}" Margin="0,4,0,0"
+                   Text="Descriptions, achievements and unlocks are kept in your AppData folder, shared with the plugin. Every save of shortcuts.vdf also keeps a .bak copy next to it."/>
+        <Button Content="Open data folder" HorizontalAlignment="Left" Margin="0,10,0,0" Click="OpenData_Click"/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
+            <Button Content="Cancel" IsCancel="True" Margin="0,0,8,0"/>
+            <Button Content="Save" Style="{StaticResource Primary}" Click="Save_Click" IsDefault="True" Padding="18,6"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

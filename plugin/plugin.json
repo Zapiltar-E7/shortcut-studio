@@ -1,0 +1,8 @@
+{
+  "$schema": "https://raw.githubusercontent.com/SteamClientHomebrew/Millennium/main/src/sys/plugin-schema.json",
+  "name": "shortcut-studio",
+  "common_name": "Shortcut Studio",
+  "description": "Descriptions, achievements, emulator trophies and RetroAchievements for non-Steam games, made in Shortcut Studio.",
+  "version": "1.10.1",
+  "backendType": "lua"
+}

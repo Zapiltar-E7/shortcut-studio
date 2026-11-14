@@ -1,0 +1,59 @@
+<Window x:Class="ShortcutStudio.SgdbWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="SteamGridDB" Width="1080" Height="760" WindowStartupLocation="CenterOwner"
+        Background="{StaticResource Panel}" ResizeMode="CanResizeWithGrip" FontFamily="Segoe UI" FontSize="13"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+    <DockPanel Margin="18">
+        <DockPanel DockPanel.Dock="Top">
+            <Button DockPanel.Dock="Right" Content="Search" Style="{StaticResource Primary}" Margin="6,0,0,0" Click="Search_Click" IsDefault="True"/>
+            <TextBlock DockPanel.Dock="Left" Text="Game" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <TextBox x:Name="Query" FontSize="14"/>
+        </DockPanel>
+
+        <DockPanel DockPanel.Dock="Top" Margin="0,10,0,0">
+            <TextBlock Text="Match" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <ComboBox x:Name="GameBox" Height="30" SelectionChanged="Game_Changed"/>
+        </DockPanel>
+
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                <Button Content="Done" Style="{StaticResource Primary}" Click="Done_Click" Padding="18,6"/>
+            </StackPanel>
+            <TextBlock x:Name="PickedText" Style="{StaticResource Dim}" VerticalAlignment="Center"
+                       Text="Click an image to use it. You can pick one for each type, then press Done."/>
+        </DockPanel>
+
+        <TabControl x:Name="KindTabs" DockPanel.Dock="Top" Margin="0,12,0,0" SelectionChanged="Kind_Changed">
+            <TabItem Header="CAPSULE" Tag="Capsule"/>
+            <TabItem Header="WIDE" Tag="Wide"/>
+            <TabItem Header="HERO" Tag="Hero"/>
+            <TabItem Header="LOGO" Tag="Logo"/>
+            <TabItem Header="ICON" Tag="Icon"/>
+        </TabControl>
+
+        <Grid Margin="0,10,0,0">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="Thumbs">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border x:Name="card" Margin="0,0,10,10" Padding="4" CornerRadius="3" Background="#10141A" Cursor="Hand"
+                                    BorderThickness="2" BorderBrush="{Binding Border}" MouseLeftButtonUp="Thumb_Click" Tag="{Binding}" ToolTip="{Binding Image.Info}">
+                                <StackPanel>
+                                    <Image Source="{Binding Image.Thumb}" Width="{Binding W}" Height="{Binding H}" Stretch="Uniform"/>
+                                    <TextBlock Text="{Binding Image.Info}" FontSize="10" Foreground="#8F98A0" Width="{Binding W}" TextTrimming="CharacterEllipsis" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+            <TextBlock x:Name="Message" Style="{StaticResource Dim}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Grid>
+    </DockPanel>
+</Window>

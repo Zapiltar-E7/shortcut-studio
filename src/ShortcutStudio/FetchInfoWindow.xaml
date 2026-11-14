@@ -1,0 +1,38 @@
+<Window x:Class="ShortcutStudio.FetchInfoWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Fetch game info" Width="680" Height="600" WindowStartupLocation="CenterOwner"
+        Background="{StaticResource Panel}" ResizeMode="CanResizeWithGrip" FontFamily="Segoe UI" FontSize="13"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+    <DockPanel Margin="18">
+        <TextBlock DockPanel.Dock="Top" Text="Fetch the description and details" Style="{StaticResource SectionTitle}"/>
+        <TextBlock DockPanel.Dock="Top" Style="{StaticResource Dim}" Margin="0,4,0,12"
+                   Text="Searches the Steam store and Wikipedia, so console and emulated games are covered too. The chosen result fills the short description, About this game, developer, publisher, release date and genres."/>
+        <DockPanel DockPanel.Dock="Top">
+            <Button DockPanel.Dock="Right" Content="Search" Style="{StaticResource Primary}" Margin="6,0,0,0" Click="Search_Click" IsDefault="True"/>
+            <TextBox x:Name="Query" FontSize="14"/>
+        </DockPanel>
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="Cancel" IsCancel="True" Margin="0,0,8,0"/>
+            <Button x:Name="UseBtn" Content="Use this" Style="{StaticResource Primary}" Click="Use_Click" IsEnabled="False" Padding="18,6"/>
+        </StackPanel>
+        <Grid Margin="0,12,0,0">
+            <ListBox x:Name="Results" SelectionChanged="Results_Changed" MouseDoubleClick="Results_DoubleClick">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <DockPanel Margin="0,3">
+                            <Border DockPanel.Dock="Left" CornerRadius="2" Padding="6,2" Margin="0,2,10,0" VerticalAlignment="Top" Background="{Binding BadgeBrush}">
+                                <TextBlock Text="{Binding Source}" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding Detail}" Style="{StaticResource Dim}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock x:Name="Message" Style="{StaticResource Dim}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Grid>
+    </DockPanel>
+</Window>
