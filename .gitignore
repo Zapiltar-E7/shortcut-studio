@@ -9,10 +9,6 @@ plugin/node_modules/
 plugin/.millennium/
 plugin/dist/
 
-# Game art made for personal achievement icons (not part of the app)
-/AchievementPNGS/
-/botw-*/
-
 # Editors and OS
 .vs/
 .vscode/

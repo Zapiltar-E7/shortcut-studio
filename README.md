@@ -1,6 +1,11 @@
 # Shortcut Studio
 
-Turns non-Steam games into ones that look official in your Steam library: name, program and launch settings, all five pieces of library art, an "About this game" section, and achievements you can unlock.
+Makes any non-Steam game look and feel like an official one in your Steam library: name, program and launch settings, all five pieces of library art, an "About this game" section, playtime, launch options and achievements.
+
+It works with anything you can add to Steam as a shortcut:
+- **Games from other launchers:** Epic, GOG, EA app, Ubisoft Connect, Battle.net, itch.io, the Xbox app, or standalone installs.
+- **Emulated games:** RetroArch, RPCS3, shadPS4, PCSX2, Dolphin, DuckStation, PPSSPP and other emulators.
+- **Recompilations and source ports:** native PC builds of console games, fan ports and mods.
 
 Run **Shortcut Studio.exe**. It needs no install and no .NET.
 
@@ -13,19 +18,28 @@ Run **Shortcut Studio.exe**. It needs no install and no .NET.
 | **Store page** | Short description, "About this game" (plain text or Steam store HTML), developer, publisher, release date, genres. |
 | **Achievements** | Name, description, unlocked and locked icons, hidden-until-unlocked, global unlock %, and unlocked state. Add, remove, reorder, unlock all or lock all. |
 
-**Import from Steam…** searches the Steam store by name or appid. It copies that game's library art, store text and details, and its full achievement list onto the shortcut, including hidden achievements, icons and global percentages. No API key is needed.
+**Import from Steam…** searches the Steam store by name or appid. It copies that game's library art, store text and details, and its full achievement list onto the shortcut, including hidden achievements, icons and global percentages. This suits games that are also sold on Steam, such as one you own on another launcher. No API key is needed.
 
 **SteamGridDB…** browses community art for each slot. Add a free API key in **Settings** first.
 
+## Achievements
+
+Achievements can come from several places:
+- **By hand:** make your own list and unlock achievements by clicking them in Steam.
+- **Steam:** copy a game's real Steam achievement list with **Import from Steam…**.
+- **Emulator trophies:** PlayStation trophy lists that sync unlocks from the emulator.
+- **RetroAchievements:** sets for retro games, synced from your RetroAchievements account.
+- **Save files:** rules that read a game's save data, for games with no achievement system of their own.
+
 ## Achievement sets (DLC)
 
-Steam now sorts achievements into sets: the base game, then one set per DLC. In Shortcut Studio, select an achievement, tick **DLC achievement** under **Achievement set** and type the DLC's name (press Enter), or pick one the game already has with **▾**. Achievements with the same name form one set; clearing the name or unticking the box puts them back in the base game.
+Steam sorts achievements into sets: the base game, then one set per DLC. In Shortcut Studio, select an achievement, tick **DLC achievement** under **Achievement set** and type the DLC's name (press Enter), or pick one the game already has with **▾**. Achievements with the same name form one set; clearing the name or unticking the box puts them back in the base game.
 
 To set many at once, select them in the list with Ctrl- or Shift-click: the **Achievement set** fields then apply to every selected achievement. Right-clicking the selection also offers **Move to set**: **Base game**, an existing DLC or **New DLC set…**.
 
 Once a game has a DLC set, its achievement list is grouped under **Base Game** and one header per DLC, in Steam's order. Click a header to collapse or expand that set; the app remembers it until you close it. **▲ / ▼** move an achievement within its own set. **▲ Hide banner** in the play bar hides the hero banner to show more of the list; the app remembers that choice.
 
-PlayStation trophy lists already mark DLC trophy packs. **Emulator trophies…** puts those trophies in a set named after the pack, such as The Old Hunters for Bloodborne (6 of its 40 trophies). Games you imported before this change need **Emulator trophies…** run once more to pick up their sets. Unlocks are kept.
+PlayStation trophy lists already mark DLC trophy packs, so **Emulator trophies…** puts those trophies in a set named after the pack.
 
 When a game has more than one set, the Steam plugin shows them the way Steam does:
 - The game page's Achievements section adds "1 base game set · 2 DLC sets".
@@ -41,40 +55,32 @@ Steam records playtime for non-Steam games itself, in `localconfig.vdf`, but onl
 
 With two or more options, pressing Play anywhere in Steam (the play bar, the library list or the context menu) opens Steam's **Select launch option** dialog. The plugin then sets the shortcut to that option through Steam's API and launches it. Ticking **Always use this option** skips the dialog from then on; **Ask every time** in the app brings it back.
 
-## Emulator trophies (RPCS3 and shadPS4)
+## Emulator trophies (RPCS3, shadPS4 and PS3 recompilations)
 
 On the **Achievements** tab, **Emulator trophies…** finds the trophy set for the shortcut. It searches the shortcut's program, start folder and launch options, or a folder you pick.
 
 - **RPCS3 (PS3):** reads `dev_hdd0\home\<user>\trophy\<NPWR…>\TROPCONF.SFM` and the `TROP###.PNG` icons. Unlocks come from `TROPUSR.DAT`.
 - **shadPS4 (PS4):** decrypts the game's `sce_sys\trophy\trophy00.trp`, preferring the `-patch` folder's copy, with the trophy key from shadPS4's `user\keys.json`. So the list works even before the game has run. It also reads lists shadPS4 has already unpacked under `user\trophy`. Unlocks come from `user\home\<user id>\trophy\<NPWR…>.xml`. Pick the shadPS4 user (1000–1003) whose progress you want.
-
-- **Native PC ports built on ps3recomp** (such as Soulbrandt, the Demon's Souls port): the trophy list and icons come from the disc's `PS3_GAME\TROPDIR\<id>\TROPHY.TRP`. The port's log names the game folder. Unlocks come from the port's `gamedata\trophies\<comm id>.json`, or `%PS3_TROPHY_DIR%` if that's set.
+- **Native PC ports built on ps3recomp:** the trophy list and icons come from the disc's `PS3_GAME\TROPDIR\<id>\TROPHY.TRP`. The port's log names the game folder. Unlocks come from the port's `gamedata\trophies\<comm id>.json`, or `%PS3_TROPHY_DIR%` if that's set.
 
 Every trophy becomes an achievement, with its name, description, icon, hidden flag and grade (Platinum, Gold, Silver or Bronze). After you save, the Steam plugin checks the emulator's unlock file every 3 seconds. A trophy earned in the game unlocks on the Steam page with the "Achievement Unlocked!" popup and the emulator's own unlock time. Synced trophies can't be unlocked by clicking, just as on a real game. **Stop syncing** turns that off.
 
 The popup shows in Steam's library window. The emulator still shows its own trophy popup in the game.
 
-## Save-file achievements (Breath of the Wild on Cemu)
+## Save-file achievements
 
-For games with no trophy system of their own, achievements can come from the game's save files. The game's entry has a trophy source with emulator `savefile`: its `unlockFile` is the game's save folder and its `npCommId` names a rules file, `extras\saverules\<id>.json`.
+For games with no achievement system of their own, achievements can come from the game's save files. The game's entry has a trophy source with emulator `savefile`: its `unlockFile` is the game's save folder and its `npCommId` names a rules file, `extras\saverules\<id>.json`.
 
-- Every save slot under the save folder is checked, including all of BotW's normal and Master Mode slots. Each slot's mode comes from the Master Mode flag in its `caption.sav`, so no slot needs to be picked.
-- Rules test the save's flags: one flag at or above a value, how many of a list of flags are set, any of several conditions, or text in a string flag (such as a registered horse's name). Flags are looked up by the CRC32 of their name. Each achievement belongs to one mode.
+The save reader handles flag-based saves: a `game_data.sav` of named flags (looked up by the CRC32 of their name), with an optional `caption.sav` per slot.
+
+- Every save slot under the save folder is checked. A rules file can name a mode flag (for example a hard mode) so each slot's mode is read from its save, and no slot needs to be picked. Each achievement belongs to one mode.
+- Rules test the save's flags: one flag at or above a value, how many of a list of flags are set, any of several conditions, or text in a string flag.
 - The Steam plugin re-reads a slot only when its files change. An achievement unlocks the first time any slot of its mode meets its rules, with Steam's popup, and stays unlocked even if that save is later deleted. Unlocks are kept in `extras\saverules\<id>.unlocks.json`.
 - Because the game writes its saves at autosaves and manual saves, an achievement pops at the next save, not the moment it's earned.
-- **Show progress in Steam (0 / N)** on the Achievements tab turns that bar on or off for one achievement. It only appears when the rule counts more than one step, and **Save to Steam** writes just that switch into the rules file. A condition marked `noProgress` is a final yes/no step the bar doesn't count, like claiming Hestu's gift after the 900 seeds. Thresholds over 100,000 are raw encodings (floats), not counts.
-- A rule marked `progress` shows Steam's progress bar ("37 / 900") on the locked achievement. Each "count" condition adds how many of its flags are set, and each flag condition adds its value, capped at what the rule needs. The furthest save slot of the rule's mode counts.
-
-The BotW set (`botw-wiiu`) has 69 achievements. Yahaha! (900 Koroks), Spirit of the Hero (120 Spirit Orbs), Eyes on Hyrule (15 towers) and Ballad of the Shrines (16 shrines) show progress bars, including the Master Mode versions. The four Champions' Ballad "+" abilities have their own achievements. Shrine Seeker was retired because it duplicated Spirit of the Hero (one orb per shrine). The groups:
-- **Normal mode (24):** the story, the world, the DLC, and max hearts, stamina and Spirit Orbs.
-- **Master Mode (13):** the four Divine Beasts, the main story, and max hearts, stamina and Spirit Orbs. They share their names with the normal-mode achievements; the description starts with "Master Mode:".
-- **Bosses (8, normal mode):** a first Hinox, Talus and Molduga, a Lynel and a Gold-Maned Lynel. The three "defeat them all" achievements need Kilton's Medal of Honor for that monster.
-- **Quests (8, normal mode).**
-- **Armor (8, normal mode):** the Zora, Stealth, Climbing, Radiant, Ancient, Barbarian and Dark sets, plus Hyrule Fashionista for every set in the game (amiibo and DLC sets included). A piece counts at any upgrade level.
-- **DLC:** Travel Medallion (in The Master Trials set) for finding the medallion, flag `IsGet_Obj_WarpDLC`; Phantom Ganon Set (The Master Trials) for owning the Skull, Armor and Greaves Kilton sells (`Armor_180_Head`, `_Upper`, `_Lower`); Ballad of the Shrines (in The Champions' Ballad set) for clearing all 16 shrines the DLC adds (Dungeon120–135: Yowaka Ita, Kihiro Moh, Etsu Korima, Rohta Chigah, Sato Koda, Kee Dafunia, Mah Eliya, Noe Rajee, Kiah Toza, Shira Gomar, Kamia Omuna, Rinu Honika, Sharo Lun, Keive Tala, Takama Shiri and Ruvo Korbah). Both are normal mode.
-- **Completion (1, normal mode):** "Hyrule, 100%", the capstone. It needs the map's own 100% (all 900 Korok seeds and the 187 named locations that count toward it) and every other achievement in the set unlocked, Master Mode included. A rule marked `requiresAll` only unlocks once every other achievement has.
-
-Removed achievements leave their trophy id unused, so the ids of the others never change.
+- A rule marked `progress` shows Steam's progress bar ("37 / 100") on the locked achievement. Each "count" condition adds how many of its flags are set, and each flag condition adds its value, capped at what the rule needs. The furthest save slot of the rule's mode counts.
+- **Show progress in Steam (0 / N)** on the Achievements tab turns that bar on or off for one achievement. It only appears when the rule counts more than one step, and **Save to Steam** writes just that switch into the rules file. A condition marked `noProgress` is a final yes/no step the bar doesn't count. Thresholds over 100,000 are raw encodings (floats), not counts.
+- A rule marked `requiresAll` only unlocks once every other achievement in the set has, for a 100% capstone.
+- Removed achievements should leave their trophy id unused, so the ids of the others never change.
 
 ## RetroAchievements
 
@@ -90,7 +96,7 @@ While the game runs through Steam, the plugin asks RetroAchievements for your pr
 ## How it reaches Steam
 
 - **Live saving (no restart):** when Steam is running with the plugin, **Save to Steam** sends your changes to the plugin, which applies them through Steam's own client API. That covers adding and removing shortcuts, name, target, start folder, launch options, hidden, all artwork and the logo position, and they update at once. The app and plugin pass these through request files in `extras\live`; the plugin writes a heartbeat there, so the app knows it's listening.
-- **Live pages:** while a non-Steam game's page is open, the plugin checks every 1.5 seconds whether anything it shows has changed: `games.json`, `unlocks.json`, and the game's unlock source (emulator trophy file, RetroAchievements cache, or the save rules and every save slot). If so, the page and an open achievement list reload in place, keeping the list's filter, search and revealed hidden achievements. Saves from the app, unlocks and progress from a game's autosave all show up without leaving the page.
+- **Live pages:** while a non-Steam game's page is open, the plugin checks every 1.5 seconds whether anything it shows has changed: `games.json`, `unlocks.json`, and the game's unlock source (emulator trophy file, RetroAchievements cache, or the save rules and every save slot). If so, the page and an open achievement list reload in place, keeping the list's filter and search. Saves from the app, unlocks and progress from a game's autosave all show up without leaving the page.
 - **Restart saving:** a few edits have no Steam API, so saving them still closes and restarts Steam: play time, overlay, Steam Input desktop config and collections. So does installing or updating the plugin. If the plugin isn't running, the app also falls back to this.
 - **Shortcuts file:** shortcuts are kept in `userdata\<account>\config\shortcuts.vdf`. Steam rewrites it on exit, so on the restart path the app closes Steam, writes the file and starts Steam again. Each of those saves keeps `shortcuts.vdf.bak` and one dated `.bak` per day.
 - **Art:** saved in `userdata\<account>\config\grid` under Steam's own file names.
@@ -98,6 +104,11 @@ While the game runs through Steam, the plugin asks RetroAchievements for your pr
 - **Shared data:** the app and the plugin both use `%APPDATA%\ShortcutStudio\extras`. `games.json` holds the details and achievements, `unlocks.json` holds unlock times, and the icons sit next to them.
 
 Existing shortcuts keep their appid when you rename them or change the target, so their art stays linked.
+
+## Requirements
+
+- Windows and the Steam desktop client.
+- [Millennium](https://steambrew.app) for the library-page features (description, achievements, playtime, launch menu, live saving). The app installs its plugin for you.
 
 ## Building
 

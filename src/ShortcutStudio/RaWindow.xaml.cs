@@ -21,7 +21,7 @@ public partial class RaWindow : Window
         Loaded += async (_, _) => await LoadConsolesAsync();
     }
 
-    /// <summary>Drops region tags and emulator suffixes ("Bloodborne™ [shadPS4]", "Game (USA)") for matching.</summary>
+    /// <summary>Drops region tags and emulator suffixes ("Game™ [shadPS4]", "Game (USA)") for matching.</summary>
     static string CleanName(string s) =>
         System.Text.RegularExpressions.Regex.Replace(s, @"[\[(].*?[\])]|[™®]", "").Trim();
 

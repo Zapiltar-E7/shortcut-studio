@@ -7,7 +7,7 @@
     <DockPanel Margin="18">
         <TextBlock DockPanel.Dock="Top" Text="Use an emulator's trophies as achievements" Style="{StaticResource SectionTitle}"/>
         <TextBlock DockPanel.Dock="Top" Style="{StaticResource Dim}" Margin="0,4,0,12"
-                   Text="Supports RPCS3 (PS3), shadPS4 (PS4) and native PC ports built on ps3recomp (such as Soulbrandt). The trophy list, icons and grades are imported, and from then on trophies you earn in the emulator unlock in Steam on their own, with a popup."/>
+                   Text="Supports RPCS3 (PS3), shadPS4 (PS4) and native PC ports built on ps3recomp. The trophy list, icons and grades are imported, and from then on trophies you earn in the emulator unlock in Steam on their own, with a popup."/>
         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
             <Button DockPanel.Dock="Right" Content="Look in another folder…" Click="Browse_Click"/>
             <TextBlock x:Name="Searched" Style="{StaticResource Dim}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"/>

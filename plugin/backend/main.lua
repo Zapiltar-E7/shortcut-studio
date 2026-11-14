@@ -193,7 +193,7 @@ local function ra_maybe_refresh(src, max_age_ms)
     if utils.time_ms() - last >= max_age_ms then pcall(ra_refresh, id, src.unlockFile) end
 end
 
--- ps3recomp PC ports (e.g. Soulbrandt): gamedata\trophies\<comm id>.json = { trophies = { { id, timestamp (unix s) } } }
+-- ps3recomp PC ports: gamedata\trophies\<comm id>.json = { trophies = { { id, timestamp (unix s) } } }
 local function ps3recomp_unlocks(path)
     local out = {}
     local data = read_json(path)
@@ -206,7 +206,7 @@ local function ps3recomp_unlocks(path)
 end
 
 -- ---------------------------------------------------------------------------------------------
--- Save-file achievements: games with no trophy system of their own (e.g. Breath of the Wild on Cemu).
+-- Save-file achievements: games with no trophy system of their own.
 -- extras\saverules\<npCommId>.json holds rules that are checked against every save slot under unlockFile
 -- (the game's "user" save folder). Flag files are a 12-byte header, then 8-byte records of
 -- { big-endian u32 CRC32(flag name), u32 value }; arrays and strings repeat one hash over several records.

@@ -316,7 +316,7 @@ public static class EmulatorTrophies
     };
 
     /// <summary>
-    /// Save-file achievements (e.g. Breath of the Wild on Cemu): the Steam plugin checks the rules in
+    /// Save-file achievements (games with no trophy system of their own): the Steam plugin checks the rules in
     /// extras\saverules\&lt;id&gt;.json against the game's saves and records unlocks in &lt;id&gt;.unlocks.json
     /// as { "&lt;trophy id&gt;": unix ms }.
     /// </summary>
@@ -336,7 +336,7 @@ public static class EmulatorTrophies
         return result;
     }
 
-    // ---------------- PS3 recompilations (ps3recomp: Soulbrandt and others) ----------------
+    // ---------------- PS3 recompilations (ps3recomp) ----------------
 
     /// <summary>
     /// Native PC ports built on ps3recomp keep the PS3 trophy set (read from the disc's TROPDIR) and write unlocks
@@ -480,7 +480,7 @@ public static class EmulatorTrophies
         return (title, defs);
     }
 
-    /// <summary>"Bloodborne: The Old Hunters" → "The Old Hunters" (Steam already says which game it is).</summary>
+    /// <summary>"Game: Expansion" → "Expansion" (Steam already says which game it is).</summary>
     static string WithoutTitle(string name, string title)
     {
         // Only when a separator follows the title, so "Doom Eternal" under "Doom" stays whole.

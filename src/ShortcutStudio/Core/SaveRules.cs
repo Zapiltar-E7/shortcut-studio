@@ -35,7 +35,7 @@ public sealed class SaveRuleSet
     JsonObject? Rule(int trophyId) => _root["achievements"]?[trophyId.ToString()] as JsonObject;
 
     /// <summary>
-    /// How many steps the rule counts (e.g. 900 Korok seeds), the same way the plugin does: each "count" condition adds
+    /// How many steps the rule counts (e.g. 100 collectibles), the same way the plugin does: each "count" condition adds
     /// its required number of flags, each flag condition its required value, and an either-or its largest alternative.
     /// Rules of 1 step (a single yes/no flag) have nothing to count.
     /// </summary>
@@ -48,7 +48,7 @@ public sealed class SaveRuleSet
     static int Steps(JsonNode? c)
     {
         if (c is not JsonObject o) return 0;
-        // A final step that the bar shouldn't count (e.g. claiming Hestu's gift after the 900 seeds).
+        // A final step that the bar shouldn't count (e.g. claiming a reward after collecting everything).
         if (o["noProgress"] is JsonValue np && np.TryGetValue<bool>(out var skip) && skip) return 0;
         if (o["any"] is JsonArray any) return any.Count == 0 ? 0 : any.Max(Steps);
         if (o["count"] is JsonArray list) return Num(o["min"]) ?? list.Count;
