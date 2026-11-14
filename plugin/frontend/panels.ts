@@ -1,5 +1,5 @@
 import { achievementSets, emulatorName, type Achievement, type AchievementSet, type GameData } from './data';
-import { ach, cx, desc, header, section } from './steam';
+import { ach, achIcon, appButton, cx, desc, header, section } from './steam';
 
 /** Tiny DOM builder: h(doc, 'div', { class: 'x' }, child, 'text'). */
 export function h(doc: Document, tag: string, attrs: Record<string, string | undefined> = {}, ...children: (Node | string | null | undefined | false)[]): HTMLElement {
@@ -11,19 +11,16 @@ export function h(doc: Document, tag: string, attrs: Record<string, string | und
 
 export const CSS = `
 .ss-section { margin-bottom: 16px; }
-.ss-body { padding: 12px 16px 16px; }
-.ss-progress-text { font-size: 13px; color: #dcdedf; margin-bottom: 8px; }
-.ss-progress-text b { color: #fff; font-weight: 500; }
-.ss-bar { height: 8px; border-radius: 2px; background: rgba(61, 68, 80, .9); overflow: hidden; margin-bottom: 14px; }
-.ss-bar > div { height: 100%; background: linear-gradient(90deg, #47bfff 0%, #1a44c2 100%); border-radius: 2px; }
-.ss-icons { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
-.ss-icon { width: 44px; height: 44px; border-radius: 2px; background: #10141a center/cover no-repeat; cursor: pointer; position: relative; }
-.ss-icon.ss-more { display: flex; align-items: center; justify-content: center; font-size: 13px; color: #8b929a; background: rgba(61, 68, 80, .6); }
+/* The achievements section uses Steam's own classes; these fill in Steam's generic layout boxes (Box/Grid). */
+.ss-pbar { display: grid; height: 10px; border-radius: 4px; overflow: hidden; background: var(--color-dull-1, #3d4450); }
+.ss-pbar > .ss-done { background: #1a9fff; }
+.ss-icons { display: grid; grid-template-columns: repeat(auto-fill, 48px); grid-template-rows: 48px; grid-auto-rows: 0; row-gap: 0; column-gap: 4px; overflow: hidden; }
+.ss-icon { width: 48px; height: 48px; background: #10141a center/cover no-repeat; cursor: pointer; position: relative; }
+.ss-icon.ss-more { box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1px solid var(--color-dull-9, #48505e); background: none; font-size: 14px; font-weight: 700; color: #fff; }
 .ss-icon.ss-locked { filter: grayscale(1) brightness(.75); }
 .ss-icon.ss-hidden-lock { display: flex; align-items: center; justify-content: center; font-size: 22px; color: #67707b; background: #23262e; }
-.ss-sublabel { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #8b929a; margin: 4px 0 8px; }
-.ss-button { display: inline-block; padding: 7px 14px; border-radius: 2px; background: rgba(61, 68, 80, .9); color: #dcdedf; font-size: 12px; cursor: pointer; user-select: none; }
-.ss-button:hover { background: #dcdedf; color: #171a21; }
+.ss-feat-icon { width: 48px; height: 48px; flex-shrink: 0; background: #10141a center/cover no-repeat; }
+.ss-view { align-self: flex-end; }
 .ss-info { padding: 14px 16px 18px; display: flex; gap: 28px; color: #c6d4df; }
 .ss-info-main { flex: 1; min-width: 0; font-size: 13px; line-height: 1.55; }
 .ss-info-main .ss-short { font-size: 15px; color: #dcdedf; margin-bottom: 12px; }
@@ -172,24 +169,37 @@ function progress(data: GameData) {
 	return { total, done, pct: total ? Math.floor((100 * done) / total) : 0 };
 }
 
-function progressBlock(doc: Document, data: GameData) {
-	const { total, done, pct } = progress(data);
-	const bar = h(doc, 'div', { class: 'ss-bar' }, h(doc, 'div', { style: `width:${pct}%` }));
-	const text = h(doc, 'div', { class: 'ss-progress-text' });
-	text.append("You've unlocked ", h(doc, 'b', {}, `${done}/${total}`), ` (${pct}%)`);
-	return [text, bar];
-}
-
 const tooltip = (a: Achievement) => (a.hidden && a.unlockedAt == null ? 'Hidden achievement' : `${a.name}\n${a.description}`);
 
-/** Right-column "Achievements" section, laid out like Steam's own. */
+/**
+ * Right-column "Achievements" section, built like Steam's own (sp.js): an AppDetailsSection with its header, then a
+ * panel holding the highlight (unlocked count and bar), and a body with the set summary, the newest unlock (two when
+ * exactly two are unlocked), the other unlocked icons, the locked icons under a divider, and View My Achievements.
+ */
 export function achievementsSection(doc: Document, data: GameData, openList: () => void): HTMLElement {
 	const unlocked = data.achievements.filter((a) => a.unlockedAt != null).sort((a, b) => b.unlockedAt! - a.unlockedAt!);
 	const locked = data.achievements.filter((a) => a.unlockedAt == null);
+	const total = data.achievements.length;
+	const done = unlocked.length;
+	const pct = total ? Math.round((100 * done) / total) : 0;
 
-	const body = h(doc, 'div', { class: cx('ss-body', ach.BasicAppDetailsAchievementsSectionBody) }, ...progressBlock(doc, data));
+	// Highlight: "You've unlocked 7/44 (16%)" over a bar split into unlocked / remaining.
+	const highlight = h(
+		doc,
+		'div',
+		{ class: cx(section.Highlight, ach.HighlightDiv) },
+		h(doc, 'div', { class: ach.UnlockedLabel }, h(doc, 'span', {}, done < total ? `You've unlocked ${done}/${total}` : `You've unlocked all achievements! ${done}/${total}`), h(doc, 'span', { class: ach.UnlockedLabelPercent }, ` (${pct}%)`)),
+		h(
+			doc,
+			'div',
+			{ class: ach.ProgressRow },
+			h(doc, 'div', { class: ach.ProgressBar }, h(doc, 'div', { class: 'ss-pbar', style: `grid-template-columns: ${done}fr ${total - done}fr` }, h(doc, 'div', { class: 'ss-done' }), h(doc, 'div', {}))),
+		),
+	);
 
-	// Like Steam's GroupsSection: "1 base game set  2 DLC sets", only when there's more than one set.
+	const body = h(doc, 'div', { class: section.Body });
+
+	// Steam's GroupsSection: "1 base game set" / "2 DLC sets", only when there's more than one set.
 	const sets = achievementSets(data);
 	if (sets.length > 1) {
 		const base = sets.filter((s) => !s.dlc).length;
@@ -198,42 +208,70 @@ export function achievementsSection(doc: Document, data: GameData, openList: () 
 			h(
 				doc,
 				'div',
-				{ class: cx('ss-sets', ach.GroupsSection) },
+				{ class: ach.GroupsSection },
 				base ? h(doc, 'div', {}, base === 1 ? '1 base game set' : `${base} base game sets`) : null,
 				dlc ? h(doc, 'div', { class: ach.DLC }, dlc === 1 ? '1 DLC set' : `${dlc} DLC sets`) : null,
 			),
 		);
 	}
 
-	const row = (list: Achievement[], isLocked: boolean, max: number) => {
-		const icons = h(doc, 'div', { class: 'ss-icons' });
-		for (const a of list.slice(0, max)) {
-			const hiddenLocked = isLocked && a.hidden;
-			const el = h(doc, 'div', { class: cx('ss-icon', hiddenLocked ? 'ss-hidden-lock' : isLocked && !a.iconGray && 'ss-locked'), title: tooltip(a), style: hiddenLocked ? undefined : bg(iconFor(a)) }, hiddenLocked ? '?' : null);
-			el.addEventListener('click', openList);
-			icons.append(el);
-		}
-		if (list.length > max) {
-			const more = h(doc, 'div', { class: 'ss-icon ss-more', title: 'View all' }, `+${list.length - max}`);
-			more.addEventListener('click', openList);
-			icons.append(more);
-		}
-		return icons;
+	const icon = (a: Achievement, isLocked: boolean) => {
+		const hiddenLocked = isLocked && a.hidden;
+		const el = h(doc, 'div', { class: cx('ss-icon', hiddenLocked ? 'ss-hidden-lock' : isLocked && !a.iconGray && 'ss-locked'), title: tooltip(a), style: hiddenLocked ? undefined : bg(iconFor(a)) }, hiddenLocked ? '?' : null);
+		el.addEventListener('click', openList);
+		return el;
+	};
+	/** One row of 48px icons, as many as fit; when some don't, the last cell becomes "+N" (Steam's IconRow). */
+	const iconRow = (list: Achievement[], isLocked: boolean) => {
+		const row = h(doc, 'div', { class: cx(ach.IconRow, 'ss-icons') });
+		let cols = 0;
+		const fill = () => {
+			const width = row.clientWidth;
+			const fit = width > 0 ? Math.max(1, Math.floor((width + 4) / 52)) : 9;
+			if (fit === cols) return;
+			cols = fit;
+			const shown = list.length > fit ? fit - 1 : list.length;
+			const cells = list.slice(0, shown).map((a) => icon(a, isLocked));
+			if (list.length > shown) {
+				const more = h(doc, 'div', { class: 'ss-icon ss-more', title: 'View all' }, `+${list.length - shown}`);
+				more.addEventListener('click', openList);
+				cells.push(more);
+			}
+			row.replaceChildren(...cells);
+		};
+		fill();
+		const RO = (doc.defaultView as any)?.ResizeObserver as typeof ResizeObserver | undefined;
+		if (RO) new RO(fill).observe(row);
+		return row;
 	};
 
-	if (unlocked.length) body.append(row(unlocked, false, 9));
-	if (locked.length) body.append(h(doc, 'div', { class: cx('ss-sublabel', ach.LockedAchievementsLabel) }, 'Locked Achievements'), row(locked, true, 9));
+	// The newest unlock with its name and description (both, when exactly two are unlocked), then the rest as icons.
+	const featured = unlocked.slice(0, unlocked.length === 2 ? 2 : 1);
+	for (const a of featured) {
+		const el = h(
+			doc,
+			'div',
+			{ class: cx(ach.Featured, ach.RightAchievementSection, ach.Clickable), role: 'link', title: tooltip(a) },
+			h(doc, 'div', { class: cx(achIcon.AchievementIconWrapper, ach.Icon, 'ss-feat-icon'), style: bg(iconFor(a)) }),
+			h(doc, 'div', { class: ach.TextSection }, h(doc, 'div', { class: ach.Name }, a.name), h(doc, 'div', { class: ach.Desc }, a.description)),
+		);
+		el.addEventListener('click', openList);
+		body.append(el);
+	}
+	const rest = unlocked.slice(featured.length);
+	if (rest.length) body.append(iconRow(rest, false));
+	if (locked.length) body.append(h(doc, 'div', { class: cx(ach.UnachievedSection, featured.length > 0 && ach.ShowDivider) }, h(doc, 'div', { class: ach.Label }, 'Locked Achievements'), iconRow(locked, true)));
 
-	const btn = h(doc, 'div', { class: 'ss-button' }, 'View My Achievements');
+	const btn = h(doc, 'button', { type: 'button', class: cx(appButton.AppDetailsButton, appButton.BottomRight, 'DialogButton', '_DialogLayout', 'Secondary', 'Focusable', 'ss-view') }, 'View My Achievements');
 	btn.addEventListener('click', openList);
 	body.append(btn);
 
 	return h(
 		doc,
 		'div',
-		{ class: cx('ss-section', section.AppDetailsSectionContainer, section.RightColumnSection), 'data-ss': 'achievements' },
-		h(doc, 'div', { class: cx(header.SectionHeader, header.PadLeft) }, h(doc, 'div', { class: header.Label }, h(doc, 'span', { class: header.LabelText }, 'Achievements'))),
-		h(doc, 'div', { class: cx(section.AppDetailsSection, section.AppDetailsSectionHasLabel) }, body),
+		{ class: cx(section.AppDetailsSection, 'Panel', 'ss-section'), role: 'region', 'data-ss': 'achievements' },
+		h(doc, 'div', { class: cx(header.SectionHeader, header.PadLeft) }, h(doc, 'div', { class: header.Label }, h(doc, 'div', { class: header.LabelText }, 'Achievements'))),
+		h(doc, 'div', { class: cx(section.AppDetailsSectionContainer, section.AppDetailsSectionHasLabel, section.RightColumnSection, 'Panel') }, highlight, body),
 	);
 }
 

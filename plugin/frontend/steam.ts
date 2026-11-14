@@ -17,7 +17,8 @@ export const section = find((m) => m.AppDetailsSectionContainer && m.RightColumn
 export const header = find((m) => m.SectionHeader && m.PadLeft && m.LabelText);
 export const ach = find((m) => m.RightAchievementSection && m.UnachievedSection);
 export const achIcon = find((m) => m.AchievementIconWrapper && m.RareAchievementIconGlow);
-export const desc = find((m) => m.GameDescription && m.AssociationList);
+export const appButton = find((m) => m.AppDetailsButton && m.BottomRight);
+export const desc =find((m) => m.GameDescription && m.AssociationList);
 
 /** Joins class names, skipping lookups that came back undefined. */
 export const cx = (...names: unknown[]) => names.filter((n) => typeof n === 'string' && n).join(' ');
