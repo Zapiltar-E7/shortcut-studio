@@ -66,6 +66,12 @@ local function be_u32(s, o) -- o is 0-based
     return ((a * 256 + b) * 256 + c) * 256 + d
 end
 
+local function le_u32(s, o) -- o is 0-based
+    local a, b, c, d = s:byte(o + 1, o + 4)
+    if not d then return nil end
+    return ((d * 256 + c) * 256 + b) * 256 + a
+end
+
 -- RPCS3 TROPUSR.DAT: big-endian; table type 6 = per-trophy {id, state, ..., CellRtc tick in microseconds since year 1}.
 local function rpcs3_unlocks(path)
     local out = {}
@@ -211,6 +217,7 @@ end
 -- (the game's "user" save folder). Flag files are a 12-byte header, then 8-byte records of
 -- { big-endian u32 CRC32(flag name), u32 value }; arrays and strings repeat one hash over several records.
 -- Unlocks are permanent once seen and kept in extras\saverules\<npCommId>.unlocks.json.
+-- Rules with "format": "totk" read Tears of the Kingdom saves instead (progress.sav, see parse_totk_file).
 -- ---------------------------------------------------------------------------------------------
 
 local save_rules_cache = {}  -- rules path -> { stamp, rules }
@@ -238,21 +245,70 @@ local function parse_flag_file(path)
     return { s = s, first = first, n = n }
 end
 
+--- Tears of the Kingdom progress.sav (Switch, little-endian): a 32-byte header (magic 0x01020304, version, end of
+--- the flag table), then 8-byte records { u32 murmur3(flag name), u32 value } grouped by value type. A record with
+--- hash 0 starts the next type group and holds its type number (0 bool, 2 int, 4 float, 6 enum, 20 uint, ...). Scalar values
+--- sit in the record; arrays and strings hold an offset into the data after the table.
+local function parse_totk_file(path)
+    local s = utils.read_file(path)
+    if not s or #s < 0x28 or le_u32(s, 0) ~= 0x01020304 then return nil end
+    local stop = math.min(le_u32(s, 8) or 0, #s)
+    local first, n, typ = {}, {}, {}
+    local t = -1
+    for o = 0x20, stop - 8, 8 do
+        local h = le_u32(s, o)
+        if h == 0 then t = le_u32(s, o + 4)
+        elseif first[h] == nil then first[h] = o; n[h] = 1; typ[h] = t end
+    end
+    return { s = s, first = first, n = n, typ = typ, le = true }
+end
+
 local function flag_value(f, h)
     if not f then return nil end
     local o = f.first[h]
     if not o then return nil end
+    if f.le then
+        -- Only bool (0), int (2), float (4), enum (6) and uint (20) keep their value in the record; every other
+        -- group (arrays, vectors, strings, binary, 64-bit) holds an offset to it instead.
+        local t = f.typ[h]
+        if t ~= 0 and t ~= 2 and t ~= 4 and t ~= 6 and t ~= 20 then return nil end
+        return le_u32(f.s, o + 4)
+    end
     return be_u32(f.s, o + 4)
 end
 
 --- A string or string array stored as consecutive 4-byte chunks under one hash.
 local function flag_text(f, h)
-    if not f then return nil end
+    if not f or f.le then return nil end
     local o, count = f.first[h], f.n[h]
     if not o then return nil end
     local parts = {}
     for i = 0, count - 1 do parts[#parts + 1] = f.s:sub(o + i * 8 + 5, o + i * 8 + 8) end
     return table.concat(parts)
+end
+
+--- A flag counts as set when it is non-zero, or, when the condition has "equals" (a number or a list of numbers,
+--- e.g. TotK enum states stored as murmur3 hashes of their names), when it is one of those values.
+local function value_ok(v, c)
+    if v == nil then return false end
+    local eq = c.equals
+    if type(eq) == "number" then return v == eq end
+    if type(eq) == "table" then
+        for _, x in ipairs(eq) do if v == x then return true end end
+        return false
+    end
+    return nil
+end
+
+local function count_set(c, game)
+    local k = 0
+    for _, h in ipairs(c.count) do
+        local v = flag_value(game, h)
+        local ok = value_ok(v, c)
+        if ok == nil then ok = v ~= nil and v ~= 0 end
+        if ok then k = k + 1 end
+    end
+    return k
 end
 
 local function rule_met(c, game, caption)
@@ -262,12 +318,7 @@ local function rule_met(c, game, caption)
         return false
     end
     if type(c.count) == "table" then
-        local k = 0
-        for _, h in ipairs(c.count) do
-            local v = flag_value(game, h)
-            if v and v ~= 0 then k = k + 1 end
-        end
-        return k >= (tonumber(c.min) or #c.count)
+        return count_set(c, game) >= (tonumber(c.min) or #c.count)
     end
     if c.text then
         local t = flag_text(game, c.text)
@@ -276,6 +327,8 @@ local function rule_met(c, game, caption)
     if c.flag then
         local f = (c.file == "caption") and caption or game
         local v = flag_value(f, c.flag)
+        local ok = value_ok(v, c)
+        if ok ~= nil then return ok end
         return v ~= nil and v >= (tonumber(c.min) or 1)
     end
     return false
@@ -297,16 +350,14 @@ local function cond_progress(c, game, caption)
         return best_cur, best_max
     end
     if type(c.count) == "table" then
-        local k = 0
-        for _, h in ipairs(c.count) do
-            local v = flag_value(game, h)
-            if v and v ~= 0 then k = k + 1 end
-        end
+        local k = game and count_set(c, game) or 0
         local m = tonumber(c.min) or #c.count
         return math.min(k, m), m
     end
     if c.flag then
         local f = (c.file == "caption") and caption or game
+        -- An exact-value check (an enum state) is one yes/no step.
+        if c.equals ~= nil then return (game and rule_met(c, game, caption)) and 1 or 0, 1 end
         local m = tonumber(c.min) or 1
         -- A threshold this large is a raw encoding (e.g. float bits), not a count: one yes/no step.
         if m > 100000 then return (game and rule_met(c, game, caption)) and 1 or 0, 1 end
@@ -334,14 +385,30 @@ local function load_save_rules(id)
     return rules
 end
 
+--- The flag file a save slot keeps its progress in: game_data.sav (BotW, Wii U) or progress.sav (TotK, Switch).
+local SLOT_FILES = { "game_data.sav", "progress.sav" }
+local function slot_game_path(dir)
+    for _, name in ipairs(SLOT_FILES) do
+        local p = fs.join(dir, name)
+        if fs.exists(p) then return p end
+    end
+    return fs.join(dir, SLOT_FILES[1])
+end
+
 --- Evaluates every rule for one save slot, re-reading it only when its files changed.
 local function slot_result(dir, rules)
-    local game_path, caption_path = fs.join(dir, "game_data.sav"), fs.join(dir, "caption.sav")
+    local totk = rules.format == "totk"
+    local game_path, caption_path = slot_game_path(dir), fs.join(dir, "caption.sav")
     local st = stamp_of(game_path) .. "|" .. stamp_of(caption_path)
     local cached = save_slot_cache[dir]
     if cached and cached.stamp == st and cached.rules == rules then return cached end
-    local game = parse_flag_file(game_path)
-    local caption = parse_flag_file(caption_path)
+    local game, caption
+    if totk then
+        game = parse_totk_file(game_path)  -- TotK's caption.sav is a picture, not flags
+    else
+        game = parse_flag_file(game_path)
+        caption = parse_flag_file(caption_path)
+    end
     local mode = "normal"
     if rules.modeFlag then
         local v = flag_value(caption, rules.modeFlag)
@@ -366,12 +433,17 @@ local function slot_result(dir, rules)
 end
 
 --- Every save slot folder under a save root: <root>\<user id>\<slot>\game_data.sav (or slots directly in root).
+--- TotK recomp: <profile>\save\<account>\slot_NN\progress.sav.
 local function save_slots(root)
     local slots = {}
+    local function is_slot(dir)
+        for _, name in ipairs(SLOT_FILES) do if fs.exists(fs.join(dir, name)) then return true end end
+        return false
+    end
     local function scan(dir, depth)
         for _, e in ipairs(fs.list(dir) or {}) do
             if e.is_directory then
-                if fs.exists(fs.join(e.path, "game_data.sav")) then slots[#slots + 1] = e.path
+                if is_slot(e.path) then slots[#slots + 1] = e.path
                 elseif depth < 2 then scan(e.path, depth + 1) end
             end
         end
@@ -673,7 +745,7 @@ function GetStamp(payload)
             parts[#parts + 1] = stamp_of(fs.join(rules_dir, id .. ".unlocks.json"))
             if type(src.unlockFile) == "string" and src.unlockFile ~= "" then
                 for _, dir in ipairs(save_slots(src.unlockFile)) do
-                    parts[#parts + 1] = stamp_of(fs.join(dir, "game_data.sav")) .. "/" .. stamp_of(fs.join(dir, "caption.sav"))
+                    parts[#parts + 1] = stamp_of(slot_game_path(dir)) .. "/" .. stamp_of(fs.join(dir, "caption.sav"))
                 end
             end
         elseif type(src.unlockFile) == "string" and src.unlockFile ~= "" then
