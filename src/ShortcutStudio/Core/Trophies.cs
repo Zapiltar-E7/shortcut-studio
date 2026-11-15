@@ -302,7 +302,7 @@ public static class EmulatorTrophies
         "rpcs3" => ReadRpcs3Unlocks(path),
         "retroachievements" => RetroAchievements.ReadUnlockCache(path),
         "ps3recomp" => ReadPs3RecompUnlocks(path),
-        "savefile" => ReadSaveFileUnlocks(npCommId),
+        "savefile" or "dusklight" => ReadSaveFileUnlocks(npCommId),
         _ => ReadShadPs4Unlocks(path),
     };
 
@@ -312,6 +312,7 @@ public static class EmulatorTrophies
         "retroachievements" => "RetroAchievements",
         "ps3recomp" => "the PC port",
         "savefile" => "your save files",
+        "dusklight" => "Dusklight",
         _ => "shadPS4",
     };
 

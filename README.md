@@ -82,6 +82,10 @@ The save reader handles flag-based saves: a `game_data.sav` of named flags (look
 - A rule marked `requiresAll` only unlocks once every other achievement in the set has, for a 100% capstone.
 - Removed achievements should leave their trophy id unused, so the ids of the others never change.
 
+## Dusklight (Twilight Princess PC port)
+
+Dusklight has its own achievements and writes them to `data\achievements.json` as `{ "<key>": { "progress", "unlocked" } }`. A trophy source with emulator `dusklight` reads that file: `unlockFile` is its path and `npCommId` names `extras\saverules\<id>.json`, which maps trophy ids to the game's keys (`{ "achievements": { "1": { "key": "hero_of_twilight" } } }`). A rule with `max` shows a progress bar from the game's own count. Dusklight stores no unlock times, so the first time the plugin sees one unlocked is kept in `<id>.unlocks.json`. Clearing an achievement in the game's menu locks it again in Steam.
+
 ## RetroAchievements
 
 For games played through emulators that support RetroAchievements: RetroArch, PCSX2, DuckStation, PPSSPP, Dolphin, Flycast, melonDS, BizHawk and others.

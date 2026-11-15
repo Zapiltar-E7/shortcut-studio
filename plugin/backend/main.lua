@@ -522,11 +522,73 @@ local function savefile_progress(src)
     return out
 end
 
+-- ---------------------------------------------------------------------------------------------
+-- Dusklight (the Twilight Princess PC port) has achievements of its own and writes them to data\achievements.json
+-- as { "<key>": { progress, unlocked } }, with no unlock times. extras\saverules\<npCommId>.json maps trophy ids
+-- to those keys ({ format = "dusklight", achievements = { ["1"] = { key, max? } } }); the first time each one is
+-- seen unlocked is kept in <npCommId>.unlocks.json (the same store save-file games use, so the app reads it too).
+-- Clearing one in the game's own menu locks it again here.
+-- ---------------------------------------------------------------------------------------------
+
+local function dusklight_rules(src)
+    local id = tostring(src.npCommId or "")
+    if id == "" or id:find("[/\\]") or id:find("%.%.") then return nil end
+    local rules = read_json(fs.join(data_dir(), "saverules", id .. ".json"))
+    if type(rules) ~= "table" or type(rules.achievements) ~= "table" then return nil end
+    return rules, fs.join(data_dir(), "saverules", id .. ".unlocks.json")
+end
+
+local function dusklight_unlocks(src)
+    local rules, store_path = dusklight_rules(src)
+    if not rules then return {} end
+    local stored = read_json(store_path)
+    if stored == nil and fs.exists(store_path) then return {} end -- unreadable right now: don't overwrite it
+    stored = stored or {}
+    -- Unreadable while the game rewrites it: keep what's stored.
+    local game = read_json(src.unlockFile)
+    if type(game) == "table" then
+        local changed = false
+        for tid, r in pairs(rules.achievements) do
+            local key = tostring(tid)
+            local e = type(r) == "table" and game[r.key] or nil
+            if type(e) == "table" then
+                if e.unlocked == true and stored[key] == nil then stored[key] = utils.time_ms(); changed = true
+                elseif e.unlocked ~= true and stored[key] ~= nil then stored[key] = nil; changed = true end
+            end
+        end
+        if changed then write_json(store_path, stored) end
+    end
+    local out = {}
+    for key, t in pairs(stored) do
+        local n = tonumber(key)
+        if n and type(t) == "number" then out[n] = t end
+    end
+    return out
+end
+
+--- Progress bars for the Dusklight achievements that count something (rules with "max").
+local function dusklight_progress(src)
+    local out = {}
+    local rules = dusklight_rules(src)
+    if not rules then return out end
+    local game = read_json(src.unlockFile) or {}
+    for tid, r in pairs(rules.achievements) do
+        local n, max = tonumber(tid), type(r) == "table" and tonumber(r.max) or nil
+        if n and max then
+            local e = game[r.key]
+            local cur = type(e) == "table" and tonumber(e.progress) or 0
+            if type(e) == "table" and e.unlocked == true then cur = max end
+            out[n] = { math.max(0, math.min(math.floor(cur), max)), max }
+        end
+    end
+    return out
+end
+
 local function emulator_unlocks(src)
     if type(src) ~= "table" or type(src.unlockFile) ~= "string" or src.unlockFile == "" then return nil end
     if not fs.exists(src.unlockFile) then return {} end
-    if src.emulator == "savefile" then
-        local ok, res = pcall(savefile_unlocks, src)
+    if src.emulator == "savefile" or src.emulator == "dusklight" then
+        local ok, res = pcall(src.emulator == "dusklight" and dusklight_unlocks or savefile_unlocks, src)
         if ok then return res end
         logger:error("Couldn't read save-file achievements from " .. src.unlockFile .. ": " .. tostring(res))
         return {}
@@ -750,6 +812,11 @@ function GetStamp(payload)
             end
         elseif type(src.unlockFile) == "string" and src.unlockFile ~= "" then
             parts[#parts + 1] = stamp_of(src.unlockFile)
+            if src.emulator == "dusklight" and not id:find("[/\\]") and not id:find("%.%.") then
+                local rules_dir = fs.join(data_dir(), "saverules")
+                parts[#parts + 1] = stamp_of(fs.join(rules_dir, id .. ".json"))
+                parts[#parts + 1] = stamp_of(fs.join(rules_dir, id .. ".unlocks.json"))
+            end
         end
     end
     return table.concat(parts, "|")
@@ -766,7 +833,8 @@ function GetGame(payload)
     -- Opening an RA game's page refreshes its unlocks if they're more than 5 minutes old.
     ra_maybe_refresh(game.trophySource, 300000)
     local unlocks = merged_unlocks(appid, game, (read_json(unlocks_file()) or {})[appid])
-    local ok_p, progress = pcall(savefile_progress, game.trophySource)
+    local src_type = type(game.trophySource) == "table" and game.trophySource.emulator or nil
+    local ok_p, progress = pcall(src_type == "dusklight" and dusklight_progress or savefile_progress, game.trophySource)
     if not ok_p then logger:error("Couldn't read achievement progress: " .. tostring(progress)); progress = {} end
     local list = {}
     for _, a in ipairs(game.achievements or {}) do

@@ -34,7 +34,7 @@ export interface GameData {
 	achievements: Achievement[];
 }
 
-export const emulatorName = (e?: string) => (e === 'rpcs3' ? 'RPCS3' : e === 'retroachievements' ? 'RetroAchievements' : e === 'ps3recomp' ? 'the PC port' : e === 'savefile' ? 'your save files' : 'shadPS4');
+export const emulatorName = (e?: string) => (e === 'rpcs3' ? 'RPCS3' : e === 'retroachievements' ? 'RetroAchievements' : e === 'ps3recomp' ? 'the PC port' : e === 'savefile' ? 'your save files' : e === 'dusklight' ? 'Dusklight' : 'shadPS4');
 
 export interface AchievementSet {
 	/** "" for the base game. */

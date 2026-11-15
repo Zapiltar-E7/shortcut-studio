@@ -494,6 +494,7 @@ public sealed class GameVm : Observable
     {
         { Emulator: "retroachievements" } s => $"Live from RetroAchievements: {s.Title} (game {s.NpCommId}, {s.User}). Achievements you earn unlock in Steam while the game runs.",
         { Emulator: "savefile" } s => $"Live from your save files: {s.Title}. Every save slot in {s.UnlockFile} is checked whenever the game saves; achievements unlock in Steam automatically.",
+        { Emulator: "dusklight" } s => $"Live from Dusklight's own achievements ({s.UnlockFile}). Achievements you earn in the game unlock in Steam automatically.",
         { } s => $"Live from {EmulatorTrophies.EmulatorName(s.Emulator)}: {s.Title} ({s.NpCommId}, user {s.User}). Trophies you earn there unlock here and in Steam automatically.",
         _ => "",
     };
