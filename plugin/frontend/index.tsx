@@ -1,7 +1,7 @@
 import { definePlugin } from '@steambrew/client';
 import { GameData, loadCapsule, loadGame, loadStamp, pollUnlocks, setUnlocked } from './data';
 import { achievementStat, achievementsSection, ensureStyles, gameInfoPanel, hasInfo, openAchievementList, showUnlockToast } from './panels';
-import { startLaunchMenu } from './launch';
+import { startLaunchMenu, syncLaunchArrow } from './launch';
 import { startPlaytime } from './playtime';
 import { onLiveApplied, startLive } from './live';
 import { appName, columns, currentAppId, isShortcut, libraryWindow, playBar, section, sel } from './steam';
@@ -107,6 +107,7 @@ function tick() {
 	const doc = win.document;
 	const appid = currentAppId();
 
+	syncLaunchArrow(doc, appid != null && isShortcut(appid) ? appid : null);
 	if (appid == null || !isShortcut(appid)) {
 		if (state) removeAll(doc);
 		state = null;

@@ -1,6 +1,6 @@
-import { callable } from '@steambrew/client';
+import { callable, Menu, MenuItem, MenuSeparator, showContextMenu } from '@steambrew/client';
 import { h } from './panels';
-import { appName, libraryWindow } from './steam';
+import { appName, cx, libraryWindow, playButton, sel } from './steam';
 
 const TAG = '[shortcut-studio]';
 const getLaunch = callable<[{ payload: string }], string>('GetLaunch');
@@ -12,7 +12,7 @@ interface Option {
 	startDir: string;
 	args: string;
 }
-interface Menu {
+interface LaunchMenu {
 	options: Option[];
 	base: Option | null;
 	choice: number | null;
@@ -31,7 +31,7 @@ function shortcutAppId(gameId: unknown): number | null {
 	}
 }
 
-async function loadMenu(appid: number): Promise<Menu | null> {
+async function loadMenu(appid: number): Promise<LaunchMenu | null> {
 	try {
 		const raw = JSON.parse(await getLaunch({ payload: JSON.stringify({ appid: String(appid) }) }));
 		if (!raw || typeof raw !== 'object') return null;
@@ -146,7 +146,7 @@ function pickOption(doc: Document, title: string, options: Option[]): Promise<{ 
 }
 
 /** Points the shortcut at one option through Steam's API (the same calls as editing its Properties). */
-function applyOption(appid: number, menu: Menu, o: Option) {
+function applyOption(appid: number, menu: LaunchMenu, o: Option) {
 	const apps = (globalThis as any).SteamClient.Apps;
 	const exe = o.exe || menu.base?.exe || '';
 	const dir = o.startDir || menu.base?.startDir || '';
@@ -195,4 +195,95 @@ export function startLaunchMenu() {
 		console.error(TAG, "couldn't hook RunGame; launch menus won't show", e);
 	}
 	if (apps.RunGame !== wrapped) console.warn(TAG, 'SteamClient.Apps.RunGame is read-only; launch menus are unavailable');
+}
+
+// ---------- Play button arrow ----------
+// Shortcuts with a launch menu get Steam's split arrow on the Play button (the one real games use for "Play from").
+// It opens a menu to pick the option Play starts without asking, or to have Play ask every time.
+
+const ARROW_SVG =
+	'<svg xmlns="http://www.w3.org/2000/svg" class="SVGIcon_Button SVGIcon_FlatArrow" width="256px" height="256px" viewBox="0 0 256 256" style="transform: rotate(180deg);"><polygon points="13.913,141 128,59 242.087,141" fill="#ffffff"></polygon></svg>';
+const MENU_REFRESH_MS = 2000;
+let arrowMenu: { appid: number; menu: LaunchMenu | null; at: number; loading: boolean } | null = null;
+
+function removeArrows(doc: Document) {
+	doc.querySelectorAll('[data-ss="launch-arrow"]').forEach((el) => el.remove());
+	doc.querySelectorAll<HTMLElement>('[data-ss-arrow]').forEach((el) => {
+		if (playButton.ShowingStreaming) el.classList.remove(playButton.ShowingStreaming);
+		delete el.dataset.ssArrow;
+	});
+}
+
+async function chooseDefault(appid: number, index: number | null) {
+	await setChoice({ payload: JSON.stringify({ appid: String(appid), index }) });
+	if (arrowMenu?.appid === appid) arrowMenu.at = 0; // re-read now
+}
+
+function openArrowMenu(appid: number, menu: LaunchMenu, anchor: HTMLElement) {
+	const R = (globalThis as any).SP_REACT;
+	const item = (label: string, checked: boolean, onClick: () => void) =>
+		R.createElement(
+			MenuItem,
+			{ onClick, selected: checked },
+			R.createElement('div', { className: cx(playButton.StreamingContextMenuItem), style: { display: 'flex', alignItems: 'center', gap: '8px' } },
+				R.createElement('div', { className: cx(playButton.CheckContainer), style: { width: '14px', flexShrink: 0, color: '#1a9fff' } }, checked ? '✓' : ''),
+				R.createElement('div', { className: cx(playButton.StreamingTargetLabel) }, label)),
+		);
+	showContextMenu(
+		R.createElement(
+			Menu,
+			{ label: 'Launch options' },
+			...menu.options.map((o, i) => item(o.name || `Option ${i + 1}`, menu.choice === i, () => chooseDefault(appid, i))),
+			R.createElement(MenuSeparator),
+			item('Ask every time', menu.choice == null, () => chooseDefault(appid, null)),
+		),
+		anchor,
+		{ bOverlapHorizontal: true },
+	);
+}
+
+/** Called on every page tick: keeps the arrow on the Play buttons of shortcuts that have a launch menu. */
+export function syncLaunchArrow(doc: Document, appid: number | null) {
+	const containerSel = sel(playButton.PlayButtonContainer);
+	if (appid == null || !containerSel || !playButton.StreamingSelector) {
+		arrowMenu = null;
+		removeArrows(doc);
+		return;
+	}
+	if (!arrowMenu || arrowMenu.appid !== appid) arrowMenu = { appid, menu: null, at: 0, loading: false };
+	const state = arrowMenu;
+	if (!state.loading && Date.now() - state.at > MENU_REFRESH_MS) {
+		state.loading = true;
+		loadMenu(appid)
+			.then((m) => {
+				state.menu = m;
+				state.at = Date.now();
+			})
+			.finally(() => (state.loading = false));
+	}
+	const menu = state.menu;
+	if (!menu) return removeArrows(doc);
+
+	// Steam keeps two Play buttons: the one in the page and the copy in the header that sticks while scrolling.
+	doc.querySelectorAll<HTMLElement>(containerSel).forEach((container) => {
+		if (playButton.ShowingStreaming && !container.classList.contains(playButton.ShowingStreaming)) container.classList.add(playButton.ShowingStreaming);
+		container.dataset.ssArrow = '1';
+		if (container.querySelector('[data-ss="launch-arrow"]')) return;
+		if (sel(playButton.StreamingSelector) && container.querySelector(sel(playButton.StreamingSelector)!)) return; // Steam has its own
+		const arrow = h(doc, 'div', {
+			class: cx(playButton.StreamingSelector, playButton.ButtonChild, 'Focusable'),
+			'aria-label': 'Launch options',
+			title: 'Launch options',
+			tabindex: '0',
+			role: 'button',
+		});
+		arrow.dataset.ss = 'launch-arrow';
+		arrow.innerHTML = ARROW_SVG;
+		arrow.addEventListener('click', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			if (arrowMenu?.appid === appid && arrowMenu.menu) openArrowMenu(appid, arrowMenu.menu, container); // drops down from the Play button's left edge, like Steam's
+		});
+		container.append(arrow);
+	});
 }

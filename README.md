@@ -55,6 +55,8 @@ Steam records playtime for non-Steam games itself, in `localconfig.vdf`, but onl
 
 With two or more options, pressing Play anywhere in Steam (the play bar, the library list or the context menu) opens Steam's **Select launch option** dialog. The plugin then sets the shortcut to that option through Steam's API and launches it. Ticking **Always use this option** skips the dialog from then on; **Ask every time** in the app brings it back.
 
+The game page's Play button also gets Steam's split arrow, as on real games. It opens a menu under the button with every option: pick one to make Play start it without asking (✓ marks the current one), or **Ask every time** to bring the dialog back.
+
 ## Emulator trophies (RPCS3, shadPS4 and PS3 recompilations)
 
 On the **Achievements** tab, **Emulator trophies…** finds the trophy set for the shortcut. It searches the shortcut's program, start folder and launch options, or a folder you pick.
