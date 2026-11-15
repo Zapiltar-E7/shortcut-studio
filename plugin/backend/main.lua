@@ -822,6 +822,13 @@ function GetStamp(payload)
     return table.concat(parts, "|")
 end
 
+--- The appids of every game in games.json (the page preloads them so it opens without a wait).
+function ListGames()
+    local ids = {}
+    for appid in pairs(read_json(games_file()) or {}) do ids[#ids + 1] = tostring(appid) end
+    return json.encode(ids)
+end
+
 --- Everything the game page needs for one shortcut, or null.
 --- payload: { "appid": "123" }
 function GetGame(payload)
@@ -831,7 +838,7 @@ function GetGame(payload)
     if type(game) ~= "table" then return "null" end
 
     -- Opening an RA game's page refreshes its unlocks if they're more than 5 minutes old.
-    ra_maybe_refresh(game.trophySource, 300000)
+    if not args(payload).quiet then ra_maybe_refresh(game.trophySource, 300000) end -- quiet: background preload
     local unlocks = merged_unlocks(appid, game, (read_json(unlocks_file()) or {})[appid])
     local src_type = type(game.trophySource) == "table" and game.trophySource.emulator or nil
     local ok_p, progress = pcall(src_type == "dusklight" and dusklight_progress or savefile_progress, game.trophySource)

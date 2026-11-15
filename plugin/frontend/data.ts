@@ -67,6 +67,18 @@ const pollRpc = callable<[{ payload: string }], string>('PollUnlocks');
 const capsuleRpc = callable<[{ payload: string }], string>('GetCapsule');
 const stampRpc = callable<[{ payload: string }], string>('GetStamp');
 
+const listRpc = callable<[{ payload: string }], string>('ListGames');
+
+/** The appids of every game the app has details for. */
+export async function listGames(): Promise<number[]> {
+	try {
+		const raw = JSON.parse(await listRpc({ payload: '{}' }));
+		return (Array.isArray(raw) ? raw : raw && typeof raw === 'object' ? Object.values(raw) : []).map(Number).filter((n) => Number.isFinite(n) && n > 0);
+	} catch {
+		return [];
+	}
+}
+
 /** Changes whenever anything the game's page shows changes on disk; "" if it couldn't be read. */
 export async function loadStamp(appid: number): Promise<string> {
 	try {
@@ -104,8 +116,9 @@ export async function pollUnlocks(running: number[] = []): Promise<Record<string
 const list = (v: unknown): any[] => (Array.isArray(v) ? v : v && typeof v === 'object' ? Object.values(v) : []);
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
 
-export async function loadGame(appid: number): Promise<GameData | null> {
-	const raw = JSON.parse(await getGame({ payload: JSON.stringify({ appid: String(appid) }) }));
+/** quiet: a background preload, so the backend skips the RetroAchievements refresh a page visit does. */
+export async function loadGame(appid: number, quiet = false): Promise<GameData | null> {
+	const raw = JSON.parse(await getGame({ payload: JSON.stringify({ appid: String(appid), quiet }) }));
 	if (!raw || typeof raw !== 'object') return null;
 	return {
 		shortDescription: str(raw.shortDescription),

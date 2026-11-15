@@ -1,5 +1,5 @@
 import { definePlugin } from '@steambrew/client';
-import { GameData, loadCapsule, loadGame, loadStamp, pollUnlocks, setUnlocked } from './data';
+import { GameData, listGames, loadCapsule, loadGame, loadStamp, pollUnlocks, setUnlocked } from './data';
 import { achievementStat, achievementsSection, ensureStyles, gameInfoPanel, hasInfo, openAchievementList, showUnlockToast } from './panels';
 import { startLaunchMenu, syncLaunchArrow } from './launch';
 import { startPlaytime } from './playtime';
@@ -22,23 +22,38 @@ let state: State | null = null;
 /** The open "View My Achievements" list, so live unlocks can redraw it. */
 let modal: { appid: number; data: GameData; render: () => void } | null = null;
 
+/**
+ * Every game's page data, with the file fingerprint it was read at. A page opens straight from here, so Steam's
+ * plain non-Steam page never shows; the fingerprint is then checked and the data re-read only if it moved on.
+ */
+const cache = new Map<number, { data: GameData | null; stamp: string }>();
+
 function changed() {
 	if (state) state.version++;
+}
+
+/** Reads one game's data into the cache (the stamp first, so a change during the read is caught next time). */
+async function fetchGame(appid: number, retry: boolean): Promise<GameData | null> {
+	const stamp = await loadStamp(appid);
+	let data = await loadGame(appid, !retry);
+	// A read can land while the app is replacing games.json; try again before showing nothing.
+	for (let i = 0; retry && !data && i < 2 && state?.appid === appid; i++) {
+		await new Promise((r) => setTimeout(r, 800));
+		data = await loadGame(appid);
+	}
+	if (stamp) cache.set(appid, { data, stamp });
+	return data;
 }
 
 async function refresh(appid: number) {
 	if (!state || state.appid !== appid) return;
 	state.loading = true;
 	try {
-		let data = await loadGame(appid);
-		// A read can land while the app is replacing games.json; try again before showing nothing.
-		for (let i = 0; !data && i < 2 && state?.appid === appid; i++) {
-			await new Promise((r) => setTimeout(r, 800));
-			data = await loadGame(appid);
-		}
+		const data = await fetchGame(appid, true);
 		if (state?.appid === appid) {
 			state.data = data;
 			changed();
+			tick(); // draw now, not at the next poll
 		}
 		if (data && modal?.appid === appid) {
 			// The open list keeps its object; swap everything in it (names, sets, order, new achievements,
@@ -52,6 +67,26 @@ async function refresh(appid: number) {
 		console.error(TAG, 'loading game data failed', e);
 	} finally {
 		if (state?.appid === appid) state.loading = false;
+	}
+}
+
+/** Re-reads the open game only if its files changed since it was cached. */
+async function revalidate(appid: number) {
+	const cached = cache.get(appid);
+	if (!cached) return refresh(appid);
+	const now = await loadStamp(appid);
+	if (now && now !== cached.stamp && state?.appid === appid && !state.loading) refresh(appid);
+}
+
+/** Reads every game the app knows into the cache in the background, so even a first visit opens at once. */
+async function preload() {
+	for (const appid of await listGames()) {
+		if (cache.has(appid)) continue;
+		try {
+			await fetchGame(appid, false);
+		} catch {
+			/* the page will load it when opened */
+		}
 	}
 }
 
@@ -115,9 +150,16 @@ function tick() {
 	}
 	if (!state || state.appid !== appid) {
 		removeAll(doc);
-		state = { appid, data: null, loading: false, version: 0 };
-		refresh(appid);
-		return;
+		const cached = cache.get(appid);
+		state = { appid, data: cached?.data ?? null, loading: false, version: 0 };
+		if (!cached) {
+			refresh(appid);
+			return;
+		}
+		// Show the cached copy now. RetroAchievements games always re-read (a visit fetches fresh unlocks);
+		// others only if their files changed since.
+		if (cached.data?.trophySource?.emulator === 'retroachievements') refresh(appid);
+		else revalidate(appid);
 	}
 	const { data, version } = state;
 	if (!data) return;
@@ -255,7 +297,7 @@ export default definePlugin(() => {
 			const path = (globalThis as any).MainWindowBrowserManager?.m_lastLocation?.pathname ?? '';
 			if (path !== lastPath) {
 				lastPath = path;
-				if (state && currentAppId() === state.appid) refresh(state.appid);
+				if (state && currentAppId() === state.appid) revalidate(state.appid);
 			}
 			tick();
 		} catch (e) {
@@ -265,28 +307,42 @@ export default definePlugin(() => {
 
 	// Live page: while a non-Steam game's page is shown, check its files' fingerprint and reload when anything
 	// changes (an app save, an unlock, a game's autosave moving a progress bar). No navigating away and back.
-	let stampFor = -1;
-	let stamp = '';
 	let checking = false;
 	setInterval(async () => {
-		if (checking || !state) return;
-		const appid = state.appid;
+		if (checking || !state || state.loading) return;
 		checking = true;
 		try {
-			const now = await loadStamp(appid);
-			if (!now || state?.appid !== appid) return;
-			if (stampFor !== appid) {
-				stampFor = appid;
-				stamp = now; // the page just loaded this game: remember, don't reload
-			} else if (now !== stamp) {
-				stamp = now;
-				if (!state.loading) refresh(appid);
-				else stamp = ''; // a load is already running; compare again next time
-			}
+			await revalidate(state.appid);
 		} finally {
 			checking = false;
 		}
 	}, STAMP_MS);
+
+	// Steam renders a game page a moment after navigating; draw onto it as soon as it appears instead of
+	// waiting for the next poll. Mutation callbacks run before the browser paints, so Steam's plain page never
+	// shows. Our own changes trigger one more call, which finds everything already in place.
+	let observed: Document | null = null;
+	let ticking = false;
+	const observer = new MutationObserver(() => {
+		if (ticking) return;
+		ticking = true;
+		try {
+			tick();
+		} catch (e) {
+			console.error(TAG, 'tick failed', e);
+		} finally {
+			ticking = false;
+		}
+	});
+	setInterval(() => {
+		const doc = libraryWindow()?.document ?? null;
+		if (doc === observed) return;
+		observer.disconnect();
+		observed = doc;
+		if (doc?.body) observer.observe(doc.body, { childList: true, subtree: true });
+	}, 1000);
+
+	setTimeout(() => preload().catch((e) => console.error(TAG, 'preloading game data failed', e)), 3000);
 
 	return {
 		title: 'Shortcut Studio',
