@@ -69,6 +69,23 @@ const stampRpc = callable<[{ payload: string }], string>('GetStamp');
 
 const listRpc = callable<[{ payload: string }], string>('ListGames');
 
+/**
+ * A backend reply that is plain text (not JSON). Millennium JSON-encodes plain strings on the way back, so they
+ * arrive wrapped in quotes ("\"data:…\""); unwrap those. Replies that are JSON objects come through as-is.
+ */
+export function text(reply: unknown): string {
+	if (typeof reply !== 'string') return '';
+	if (reply.length >= 2 && reply.startsWith('"') && reply.endsWith('"')) {
+		try {
+			const s = JSON.parse(reply);
+			if (typeof s === 'string') return s;
+		} catch {
+			/* not JSON after all: use it as it is */
+		}
+	}
+	return reply;
+}
+
 /** The appids of every game the app has details for. */
 export async function listGames(): Promise<number[]> {
 	try {
@@ -82,8 +99,8 @@ export async function listGames(): Promise<number[]> {
 /** Changes whenever anything the game's page shows changes on disk; "" if it couldn't be read. */
 export async function loadStamp(appid: number): Promise<string> {
 	try {
-		const s = await stampRpc({ payload: JSON.stringify({ appid: String(appid) }) });
-		return typeof s === 'string' ? s : '';
+		const s = text(await stampRpc({ payload: JSON.stringify({ appid: String(appid) }) }));
+		return s;
 	} catch {
 		return '';
 	}
@@ -92,8 +109,8 @@ export async function loadStamp(appid: number): Promise<string> {
 /** The shortcut's portrait library capsule as a data: URI, or "" if it has none. */
 export async function loadCapsule(appid: number): Promise<string> {
 	try {
-		const uri = await capsuleRpc({ payload: JSON.stringify({ appid: String(appid) }) });
-		return typeof uri === 'string' && uri.startsWith('data:') ? uri : '';
+		const uri = text(await capsuleRpc({ payload: JSON.stringify({ appid: String(appid) }) }));
+		return uri.startsWith('data:') ? uri : '';
 	} catch {
 		return '';
 	}

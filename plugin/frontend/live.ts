@@ -1,4 +1,5 @@
 import { callable } from '@steambrew/client';
+import { text } from './data';
 
 const TAG = '[shortcut-studio]';
 const tickRpc = callable<[{ payload: string }], string>('LiveTick');
@@ -67,7 +68,7 @@ async function apply(op: Op): Promise<Result> {
 		case 'art': {
 			const type = ASSET[op.kind ?? ''];
 			if (type === undefined) throw new Error(`Unknown art kind ${op.kind}`);
-			const b64 = await imageRpc({ payload: JSON.stringify({ path: op.path }) });
+			const b64 = text(await imageRpc({ payload: JSON.stringify({ path: op.path }) }));
 			if (!b64) throw new Error(`Couldn't read ${op.path}`);
 			const ext = /\.jpe?g$/i.test(op.path ?? '') ? 'jpg' : 'png';
 			await apps.SetCustomArtworkForApp(id, b64, ext, type);

@@ -3,6 +3,6 @@
   "name": "shortcut-studio",
   "common_name": "Shortcut Studio",
   "description": "Descriptions, achievements, emulator trophies and RetroAchievements for non-Steam games, made in Shortcut Studio.",
-  "version": "1.12.4",
+  "version": "1.12.5",
   "backendType": "lua"
 }
