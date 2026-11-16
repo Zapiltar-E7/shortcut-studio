@@ -101,6 +101,13 @@ export const CSS = `
 .ss-hiddenrow .ss-ach-icon { display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--ss-faint); background: var(--ss-tile-muted); }
 .ss-hiddenrow .ss-ach-desc { color: #67c1f5; }
 .ss-hiddenrow:hover .ss-ach-name { text-decoration: underline; }
+/* Revealed hidden ones, like Steam's: listed after the other locked ones, blurred until hovered or clicked. */
+.ss-secret { cursor: pointer; }
+.ss-secret .ss-ach-name, .ss-secret .ss-ach-desc, .ss-secret .ss-ach-icon { filter: blur(6px); transition: filter .15s; }
+.ss-secret.ss-locked .ss-ach-icon { filter: grayscale(1) brightness(.7) blur(6px); }
+.ss-secret:hover .ss-ach-name, .ss-secret:hover .ss-ach-desc, .ss-secret:hover .ss-ach-icon,
+.ss-secret.ss-peek .ss-ach-name, .ss-secret.ss-peek .ss-ach-desc, .ss-secret.ss-peek .ss-ach-icon { filter: none; }
+.ss-secret.ss-locked:hover .ss-ach-icon, .ss-secret.ss-locked.ss-peek .ss-ach-icon { filter: grayscale(1) brightness(.7); }
 .ss-ach-toggle { font-size: 12px; color: #67c1f5; cursor: pointer; margin-top: 4px; opacity: 0; transition: opacity .12s; }
 .ss-ach:hover .ss-ach-toggle { opacity: 1; }
 .ss-ach-toggle:hover { text-decoration: underline; }
@@ -395,7 +402,8 @@ export function openAchievementList(doc: Document, appid: number, gameName: stri
 	const synced = data.trophySource;
 	// Hidden ones revealed with "Click to reveal" stay revealed only while this list is open, like Steam's. Keeping
 	// them for the whole Steam session made newly hidden achievements look like they never got hidden.
-	const shown = new Set<string>();
+	const revealed = new Set<string>(); // sets ("" = base game, else the DLC name) whose hidden ones were revealed
+	const peeked = new Set<string>(); // revealed rows clicked to stay unblurred
 	let filter: Filter = 'all';
 	let query = '';
 	let showGlobal = globalStats.get(appid) ?? false;
@@ -547,7 +555,7 @@ export function openAchievementList(doc: Document, appid: number, gameName: stri
 		const out: HTMLElement[] = [];
 		for (const s of sets) {
 			if (setFilter != null && s.dlc !== setFilter) continue;
-			const rows = renderSet(s.achievements);
+			const rows = renderSet(s.achievements, s.dlc);
 			if (sets.length > 1 && rows.length) out.push(setHeader(s));
 			out.push(...rows);
 		}
@@ -556,11 +564,11 @@ export function openAchievementList(doc: Document, appid: number, gameName: stri
 	};
 
 	/** Unlocked (newest first), then locked, then the folded hidden row, for one set's achievements. */
-	const renderSet = (achievements: Achievement[]): HTMLElement[] => {
+	const renderSet = (achievements: Achievement[], set: string): HTMLElement[] => {
 		const unlocked = achievements.filter((a) => a.unlockedAt != null).sort((a, b) => b.unlockedAt! - a.unlockedAt!);
 		const lockedAll = achievements.filter((a) => a.unlockedAt == null);
-		const secret = lockedAll.filter((a) => a.hidden && !shown.has(a.id));
-		const locked = lockedAll.filter((a) => !(a.hidden && !shown.has(a.id)));
+		const secret = lockedAll.filter((a) => a.hidden);
+		const locked = lockedAll.filter((a) => !a.hidden);
 		const out: HTMLElement[] = [];
 
 		if (filter !== 'locked') {
@@ -569,8 +577,22 @@ export function openAchievementList(doc: Document, appid: number, gameName: stri
 		}
 		if (filter !== 'unlocked') {
 			const l = locked.filter(match);
-			const showSecret = secret.length > 0 && !query;
-			if (l.length || showSecret) out.push(h(doc, 'div', { class: 'ss-group' }, `Locked Achievements (${lockedAll.length})`), ...l.map(row));
+			// Revealed: Steam lists them after the other locked ones (not back in their place), each blurred until
+			// hovered, or clicked to keep it showing. Searching only matches them once revealed.
+			const s = revealed.has(set) ? secret.filter(match) : [];
+			const showSecret = secret.length > 0 && !query && !revealed.has(set);
+			if (l.length || s.length || showSecret) out.push(h(doc, 'div', { class: 'ss-group' }, `Locked Achievements (${lockedAll.length})`), ...l.map(row));
+			for (const a of s) {
+				const el = row(a);
+				el.classList.add('ss-secret');
+				el.classList.toggle('ss-peek', peeked.has(a.id));
+				el.addEventListener('click', () => {
+					if (peeked.has(a.id)) peeked.delete(a.id);
+					else peeked.add(a.id);
+					el.classList.toggle('ss-peek', peeked.has(a.id));
+				});
+				out.push(el);
+			}
 			if (showSecret) {
 				// Like Steam: hidden ones stay folded into one row until revealed.
 				const el = h(
@@ -581,7 +603,7 @@ export function openAchievementList(doc: Document, appid: number, gameName: stri
 					h(doc, 'div', { class: 'ss-ach-text' }, h(doc, 'div', { class: 'ss-ach-name' }, `${secret.length} hidden achievement${secret.length === 1 ? '' : 's'} remaining`), h(doc, 'div', { class: 'ss-ach-desc' }, 'Details for each achievement will be revealed once unlocked. Click to reveal them now.')),
 				);
 				el.addEventListener('click', () => {
-					for (const a of secret) shown.add(a.id);
+					revealed.add(set);
 					renderList();
 				});
 				out.push(el);
