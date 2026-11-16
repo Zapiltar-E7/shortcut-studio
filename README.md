@@ -57,6 +57,8 @@ With two or more options, pressing Play anywhere in Steam (the play bar, the lib
 
 The game page's Play button also gets Steam's split arrow, as on real games. It opens a menu under the button with every option: pick one to make Play start it without asking (✓ marks the current one), or **Ask every time** to bring the dialog back.
 
+In **Big Picture** the dialog is a native Big Picture dialog: the controller moves between the options, A launches the focused one, B cancels, and **Always use this option** is a toggle. The split arrow on Play works there too, but only by touch or mouse; a controller can't reach it, so use the dialog's toggle or the app to set a default.
+
 ## Emulator trophies (RPCS3, shadPS4 and PS3 recompilations)
 
 On the **Achievements** tab, **Emulator trophies…** finds the trophy set for the shortcut. It searches the shortcut's program, start folder and launch options, or a folder you pick.
@@ -98,6 +100,17 @@ For games played through emulators that support RetroAchievements: RetroArch, PC
 Every achievement comes in with its badge and locked badge, points, global unlock % and the date you earned it. Empty Developer, Publisher, Release date and Genre fields on the Store page are filled from RetroAchievements too.
 
 While the game runs through Steam, the plugin asks RetroAchievements for your progress about once a minute, and new unlocks get the popup. It also refreshes when you open the game's page and the data is more than 5 minutes old. Unlocks are cached in `extras\ra\<game id>.json`, so pages load without waiting on the website.
+
+## Big Picture
+
+The plugin also draws in Big Picture mode. On a non-Steam game's page:
+
+- **Achievements X/Y** sits in the play section's stats, next to Last Played and Play Time.
+- The **Achievements** section is at the top of the **Your stuff** tab, where Steam lists them for real games.
+- **Game Info** shows the description and details in place of Steam's "detailed information is unavailable" notice.
+- Unlock popups and the launch-option dialog appear over Big Picture.
+
+**View My Achievements** and the achievement icons open the full list by touch or mouse. Steam's controller focus can't reach elements the plugin adds to the page, so a controller can't open the list. Once it's open, the D-pad and bumpers scroll it and B closes it.
 
 ## How it reaches Steam
 

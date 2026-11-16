@@ -362,12 +362,30 @@ const globalStats = new Map<number, boolean>();
  */
 export function openAchievementList(doc: Document, appid: number, gameName: string, data: GameData, toggle: (a: Achievement) => Promise<void>, capsule = '') {
 	doc.querySelector('.ss-modal')?.remove();
+	const win = doc.defaultView;
 	const close = () => {
 		modal.remove();
 		doc.removeEventListener('keydown', onKey, true);
 		doc.removeEventListener('click', closeMenu, true);
+		win?.removeEventListener('vgp_onbuttondown', onPad, true);
 	};
-	const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
+	const onKey = (e: KeyboardEvent) => {
+		if (e.key !== 'Escape') return;
+		e.preventDefault();
+		e.stopPropagation();
+		close();
+	};
+	// Big Picture: controller buttons arrive as vgp_onbuttondown. B closes, the D-pad and bumpers scroll the list,
+	// and nothing reaches the page underneath while the list is open.
+	const onPad = (e: Event) => {
+		const button = (e as CustomEvent).detail?.button;
+		const scroller = dialog.querySelector<HTMLElement>('.ss-scroll');
+		if (button === 2) close();
+		else if (scroller && (button === 9 || button === 10)) scroller.scrollBy({ top: button === 9 ? -160 : 160, behavior: 'smooth' });
+		else if (scroller && (button === 5 || button === 6)) scroller.scrollBy({ top: (button === 5 ? -1 : 1) * scroller.clientHeight * 0.9, behavior: 'smooth' });
+		e.preventDefault();
+		e.stopPropagation();
+	};
 
 	const synced = data.trophySource;
 	// Hidden ones revealed with "Click to reveal" stay revealed only while this list is open, like Steam's. Keeping
@@ -453,6 +471,7 @@ export function openAchievementList(doc: Document, appid: number, gameName: stri
 	const modal = h(doc, 'div', { class: 'ss-modal' }, dialog);
 	modal.addEventListener('click', (e) => e.target === modal && close());
 	doc.addEventListener('keydown', onKey, true);
+	win?.addEventListener('vgp_onbuttondown', onPad, true);
 
 	const renderTop = () => {
 		const { total, done, pct } = progress(data);

@@ -20,6 +20,10 @@ export const achIcon = find((m) => m.AchievementIconWrapper && m.RareAchievement
 export const playButton = find((m) => m.PlayButtonContainer && m.StreamingSelector && m.ShowingStreaming);
 export const appButton =find((m) => m.AppDetailsButton && m.BottomRight);
 export const desc =find((m) => m.GameDescription && m.AssociationList);
+// Big Picture's game page: tabs (Activity / Your stuff / Community / Game Info) under the play section.
+export const bpMedia = find((m) => m.ScreenshotsSection && m.NoRecent);
+export const bpGameInfo = find((m) => m.GameInfoContainer && m.GameInfoQuickLinks);
+export const bpTabs = find((m) => m.TabRowTabs && m.TabContentsScroll && m.GamepadTabbedPage);
 
 /** Joins class names, skipping lookups that came back undefined. */
 export const cx = (...names: unknown[]) => names.filter((n) => typeof n === 'string' && n).join(' ');
@@ -45,9 +49,24 @@ export function appName(appid: number): string {
 	return g.appStore?.GetAppOverviewByAppID?.(appid)?.display_name ?? '';
 }
 
-/** The main library window (where game pages render), if open. */
+const DESKTOP = 'SP Desktop_uid0';
+const BIG_PICTURE = 'SP BPM_uid0';
+const popupWindow = (name: string): Window | null => g.g_PopupManager?.GetExistingPopup?.(name)?.window ?? null;
+
+/**
+ * The window game pages render in: Big Picture's while it is open and showing, otherwise the desktop library.
+ * (Steam closes the desktop window when Big Picture opens, and reopens it when Big Picture exits.)
+ */
 export function libraryWindow(): Window | null {
-	return g.g_PopupManager?.GetExistingPopup?.('SP Desktop_uid0')?.window ?? null;
+	const bp = popupWindow(BIG_PICTURE);
+	const desktop = popupWindow(DESKTOP);
+	if (bp && (!desktop || bp.document.visibilityState === 'visible')) return bp;
+	return desktop ?? bp;
+}
+
+/** True when `win` is Big Picture's window (controller UI). */
+export function isBigPicture(win: Window | null | undefined): boolean {
+	return !!win && win === popupWindow(BIG_PICTURE);
 }
 
 export function formatDate(ms: number): string {

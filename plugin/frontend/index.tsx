@@ -4,7 +4,7 @@ import { achievementStat, achievementsSection, ensureStyles, gameInfoPanel, hasI
 import { startLaunchMenu, syncLaunchArrow } from './launch';
 import { startPlaytime } from './playtime';
 import { onLiveApplied, startLive } from './live';
-import { appName, columns, currentAppId, isShortcut, libraryWindow, playBar, section, sel } from './steam';
+import { appName, bpGameInfo, bpMedia, columns, currentAppId, desc, isBigPicture, isShortcut, libraryWindow, playBar, section, sel } from './steam';
 
 const TAG = '[shortcut-studio]';
 const POLL_MS = 400;
@@ -16,6 +16,8 @@ interface State {
 	loading: boolean;
 	/** Bumped whenever data changes, so mounted panels know to redraw. */
 	version: number;
+	/** The page document the panels are drawn in (desktop library or Big Picture). */
+	doc: Document;
 }
 
 let state: State | null = null;
@@ -148,10 +150,18 @@ function tick() {
 		state = null;
 		return;
 	}
-	if (!state || state.appid !== appid) {
+	if (!state || state.appid !== appid || state.doc !== doc) {
+		if (state && state.doc !== doc) {
+			try {
+				removeAll(state.doc);
+			} catch {
+				/* that window is gone */
+			}
+		}
+		const sameGame = state?.appid === appid;
 		removeAll(doc);
 		const cached = cache.get(appid);
-		state = { appid, data: cached?.data ?? null, loading: false, version: 0 };
+		state = { appid, data: sameGame ? state!.data : (cached?.data ?? null), loading: false, version: sameGame ? state!.version + 1 : 0, doc };
 		if (!cached) {
 			refresh(appid);
 			return;
@@ -164,6 +174,7 @@ function tick() {
 	const { data, version } = state;
 	if (!data) return;
 	ensureStyles(doc);
+	if (isBigPicture(win)) return tickBigPicture(doc, appid, data, version);
 
 	// "ACHIEVEMENTS 7/63" in the play bar, exactly as Steam shows it for real games.
 	// (Steam shows Last Played and Play Time for shortcuts by itself.)
@@ -204,16 +215,78 @@ function tick() {
 		version,
 		() =>
 			data.achievements.length
-				? achievementsSection(doc, data, async () => {
-						const capsule = await loadCapsule(appid);
-							const render = openAchievementList(doc, appid, appName(appid), data, (a) => toggle(appid, doc, a), capsule);
-						modal = { appid, data, render };
-					})
+				? achievementsSection(doc, data, () => openList(doc, appid, data))
 				: null,
 		(el) => {
 			const column = sel(columns.RightColumn) && doc.querySelector(sel(columns.RightColumn)!);
 			if (!column) return false;
 			column.prepend(el);
+			return true;
+		},
+	);
+}
+
+/** Opens the full achievement list over the page. */
+async function openList(doc: Document, appid: number, data: GameData) {
+	const capsule = await loadCapsule(appid);
+	const render = openAchievementList(doc, appid, appName(appid), data, (a) => toggle(appid, doc, a), capsule);
+	modal = { appid, data, render };
+}
+
+/**
+ * Big Picture's game page has the play section, then tabs (Activity / Your stuff / Community / Game Info).
+ * The achievement count goes in the play section's stats, the Achievements section at the top of Your stuff
+ * (where Steam lists them for real games), and the game's details in Game Info in place of Steam's
+ * "detailed information is unavailable" notice.
+ */
+function tickBigPicture(doc: Document, appid: number, data: GameData, version: number) {
+	mount(
+		doc,
+		'stats',
+		version,
+		() => (data.achievements.length ? achievementStat(doc, playBar, data.achievements.filter((a) => a.unlockedAt != null).length, data.achievements.length) : null),
+		(el) => {
+			const target = sel(playBar.GameStatsSection) ? doc.querySelector(sel(playBar.GameStatsSection)!) : null;
+			if (!target) return false;
+			target.append(el);
+			return true;
+		},
+	);
+
+	// The open tab's content. Your stuff is the one with the Media section; Game Info has its own container.
+	const seek = sel(columns.SeekTarget) ? doc.querySelector<HTMLElement>(sel(columns.SeekTarget)!) : null;
+	const media = seek && sel(bpMedia.ScreenshotsSection) ? seek.querySelector(sel(bpMedia.ScreenshotsSection)!) : null;
+	const gameInfo = seek && sel(bpGameInfo.GameInfoContainer) ? seek.querySelector<HTMLElement>(sel(bpGameInfo.GameInfoContainer)!) : null;
+
+	mount(
+		doc,
+		'achievements',
+		version,
+		() => (data.achievements.length && media ? achievementsSection(doc, data, () => openList(doc, appid, data)) : null),
+		(el) => {
+			if (!seek || !media) return false;
+			el.classList.add('ss-bp');
+			seek.prepend(el);
+			return true;
+		},
+	);
+
+	if (gameInfo && hasInfo(data)) {
+		const notice = sel(desc.Shortcut) ? gameInfo.querySelector<HTMLElement>(sel(desc.Shortcut)!) : null;
+		if (notice && !notice.dataset.ssHidden) {
+			notice.dataset.ssHidden = '1';
+			notice.style.display = 'none';
+		}
+	}
+	mount(
+		doc,
+		'info',
+		version,
+		() => (gameInfo && hasInfo(data) ? gameInfoPanel(doc, data) : null),
+		(el) => {
+			if (!gameInfo) return false;
+			el.classList.add('ss-bp');
+			gameInfo.prepend(el);
 			return true;
 		},
 	);

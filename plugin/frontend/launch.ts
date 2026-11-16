@@ -1,6 +1,6 @@
-import { callable, Menu, MenuItem, MenuSeparator, showContextMenu } from '@steambrew/client';
+import { callable, DialogButton, Menu, MenuItem, MenuSeparator, ModalRoot, showContextMenu, showModal, ToggleField } from '@steambrew/client';
 import { h } from './panels';
-import { appName, cx, libraryWindow, playButton, sel } from './steam';
+import { appName, cx, isBigPicture, libraryWindow, playButton, sel } from './steam';
 
 const TAG = '[shortcut-studio]';
 const getLaunch = callable<[{ payload: string }], string>('GetLaunch');
@@ -145,6 +145,62 @@ function pickOption(doc: Document, title: string, options: Option[]): Promise<{ 
 	});
 }
 
+type Pick = { index: number; remember: boolean } | null;
+
+/**
+ * Big Picture's version of the picker: a real Steam modal built from Steam's own dialog components, so the
+ * controller moves between options (A launches the focused one, B cancels) exactly as in Steam's own dialogs.
+ * Falls back to the first option if Steam's components can't be found, so Play never silently does nothing.
+ */
+function pickOptionGamepad(win: Window, title: string, options: Option[]): Promise<Pick> {
+	const R = (globalThis as any).SP_REACT;
+	if (!R || !ModalRoot || !DialogButton) {
+		console.warn(TAG, "Steam's dialog components weren't found; launching the first option");
+		return Promise.resolve({ index: 0, remember: false });
+	}
+	return new Promise((resolve) => {
+		let settled = false;
+		let remember = false;
+		let modal: { Close: () => void } | null = null;
+		const done = (v: Pick) => {
+			if (settled) return;
+			settled = true;
+			modal?.Close();
+			resolve(v);
+		};
+		const Picker = () => {
+			const [on, setOn] = R.useState(false);
+			return R.createElement(
+				ModalRoot,
+				{ onCancel: () => done(null), closeModal: () => done(null), bAllowFullSize: false },
+				R.createElement('div', { style: { fontSize: '24px', fontWeight: 700, marginBottom: '4px' } }, title),
+				R.createElement('div', { style: { fontSize: '14px', opacity: 0.7, marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '.04em' } }, `Select launch option (${options.length})`),
+				...options.map((o, i) =>
+					R.createElement(DialogButton, { key: i, style: { marginBottom: '8px', textAlign: 'left' }, onClick: () => done({ index: i, remember }) }, o.name || `Option ${i + 1}`),
+				),
+				ToggleField
+					? R.createElement(ToggleField, {
+							label: 'Always use this option',
+							description: "Change or undo this on the game's Details tab in Shortcut Studio.",
+							checked: on,
+							onChange: (v: boolean) => {
+								remember = v;
+								setOn(v);
+							},
+						})
+					: null,
+				R.createElement(DialogButton, { style: { marginTop: '12px' }, onClick: () => done(null) }, 'Cancel'),
+			);
+		};
+		try {
+			modal = showModal(R.createElement(Picker), win, { strTitle: 'Select launch option', bHideMainWindowForPopouts: false, bNeverPopOut: true });
+		} catch (e) {
+			console.error(TAG, "couldn't show the launch picker in Big Picture; launching the first option", e);
+			done({ index: 0, remember: false });
+		}
+	});
+}
+
 /** Points the shortcut at one option through Steam's API (the same calls as editing its Properties). */
 function applyOption(appid: number, menu: LaunchMenu, o: Option) {
 	const apps = (globalThis as any).SteamClient.Apps;
@@ -172,8 +228,9 @@ export function startLaunchMenu() {
 			if (!menu) return original(gameId, ...rest);
 			let index = menu.choice != null && menu.choice >= 0 && menu.choice < menu.options.length ? menu.choice : -1;
 			if (index < 0) {
-				const doc = libraryWindow()?.document ?? document;
-				const pick = await pickOption(doc, appName(appid) || 'Launch', menu.options);
+				const win = libraryWindow();
+				const title = appName(appid) || 'Launch';
+				const pick = isBigPicture(win) ? await pickOptionGamepad(win!, title, menu.options) : await pickOption(win?.document ?? document, title, menu.options);
 				if (!pick) return; // cancelled
 				index = pick.index;
 				if (pick.remember) await setChoice({ payload: JSON.stringify({ appid: String(appid), index }) });
