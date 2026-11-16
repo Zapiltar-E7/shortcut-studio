@@ -784,6 +784,30 @@ function SetLaunchChoice(payload)
     return write_json(launch_choice_file(), all) and "true" or "false"
 end
 
+-- ---------------------------------------------------------------------------------------------
+-- Plugin look: which colour palette the plugin's own windows use. Shared with the app's Settings window.
+-- extras\plugin_settings.json = { "style": "auto" | "stock" | "simply-dark" }
+-- ---------------------------------------------------------------------------------------------
+
+local function plugin_settings_file() return fs.join(data_dir(), "plugin_settings.json") end
+local STYLES = { auto = true, stock = true, ["simply-dark"] = true }
+
+function GetStyle()
+    local s = read_json(plugin_settings_file())
+    local style = type(s) == "table" and s.style or nil
+    return STYLES[style] and style or "auto"
+end
+
+--- payload: { style }
+function SetStyle(payload)
+    local style = args(payload).style
+    if not STYLES[style] then return "false" end
+    local s = read_json(plugin_settings_file())
+    if type(s) ~= "table" then s = {} end
+    s.style = style
+    return write_json(plugin_settings_file(), s) and "true" or "false"
+end
+
 --- A cheap fingerprint of everything one game's page shows: games.json, unlocks.json and the game's unlock
 --- source (emulator file, RetroAchievements cache, or the save rules, their unlocks and every save slot).
 --- The page polls this and reloads only when it changes. payload: { "appid": "123" }

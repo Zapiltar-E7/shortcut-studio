@@ -1,4 +1,5 @@
-import { definePlugin } from '@steambrew/client';
+import { definePlugin, DropdownItem } from '@steambrew/client';
+import { currentStyle, lastPalette, onStyleChange, setStyle, startStyle, Style, STYLES } from './style';
 import { GameData, listGames, loadCapsule, loadGame, loadStamp, pollUnlocks, setUnlocked } from './data';
 import { achievementStat, achievementsSection, ensureStyles, gameInfoPanel, hasInfo, openAchievementList, showUnlockToast } from './panels';
 import { startLaunchMenu, syncLaunchArrow } from './launch';
@@ -171,9 +172,12 @@ function tick() {
 		if (cached.data?.trophySource?.emulator === 'retroachievements') refresh(appid);
 		else revalidate(appid);
 	}
-	const { data, version } = state;
+	const { data } = state;
 	if (!data) return;
+	const palette = lastPalette();
 	ensureStyles(doc);
+	if (lastPalette() !== palette) changed(); // redraw the placeholder trophies in the new palette
+	const { version } = state;
 	if (isBigPicture(win)) return tickBigPicture(doc, appid, data, version);
 
 	// "ACHIEVEMENTS 7/63" in the play bar, exactly as Steam shows it for real games.
@@ -341,7 +345,33 @@ async function watchTrophies() {
 	}
 }
 
+/** The plugin's page in Millennium's settings: the look of the plugin's own windows. */
+function SettingsPage() {
+	const R = (globalThis as any).SP_REACT;
+	const [style, set] = R.useState(currentStyle());
+	R.useEffect(() => onStyleChange((s: Style) => set(s)), []);
+	return (
+		<div style={{ padding: 16, lineHeight: 1.5 }}>
+			<p>Descriptions, details and achievements for non-Steam games are edited in the Shortcut Studio app.</p>
+			<p>Open a non-Steam game in your library to see its details, and use View My Achievements to lock or unlock achievements.</p>
+			<DropdownItem
+				label="Style"
+				description="Colours of the plugin's own windows: the achievement list, launch-option dialog, unlock popup and achievement tiles. Auto uses Simply Dark when that Millennium theme is active. Also in the app's Settings."
+				rgOptions={STYLES.map((o) => ({ data: o.data, label: o.label }))}
+				selectedOption={style}
+				onChange={(o) => setStyle(o.data as Style)}
+			/>
+		</div>
+	);
+}
+
 export default definePlugin(() => {
+	try {
+		startStyle();
+		onStyleChange(() => changed());
+	} catch (e) {
+		console.error(TAG, 'style setting failed to start', e);
+	}
 	setInterval(watchTrophies, TROPHY_POLL_MS);
 	try {
 		startLaunchMenu();
@@ -420,11 +450,6 @@ export default definePlugin(() => {
 	return {
 		title: 'Shortcut Studio',
 		icon: <span style={{ fontWeight: 700 }}>SS</span>,
-		content: (
-			<div style={{ padding: 16, lineHeight: 1.5 }}>
-				<p>Descriptions, details and achievements for non-Steam games are edited in the Shortcut Studio app.</p>
-				<p>Open a non-Steam game in your library to see its details, and use View My Achievements to lock or unlock achievements.</p>
-			</div>
-		),
+		content: <SettingsPage />,
 	};
 });

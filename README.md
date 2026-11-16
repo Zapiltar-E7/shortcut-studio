@@ -112,6 +112,16 @@ The plugin also draws in Big Picture mode. On a non-Steam game's page:
 
 **View My Achievements** and the achievement icons open the full list by touch or mouse. Steam's controller focus can't reach elements the plugin adds to the page, so a controller can't open the list. Once it's open, the D-pad and bumpers scroll it and B closes it.
 
+## Plugin style
+
+The page sections use Steam's own classes, so they follow whatever Steam or Millennium theme is active. The plugin's own windows have their own colours: the achievement list, the desktop launch-option dialog, the unlock popup and the achievement tiles. **Style** picks those colours:
+
+- **Stock:** stock Steam's blue-grey.
+- **Simply Dark:** the neutral greys of the Simply Dark Millennium theme. It uses the theme's own colour variables, so changes made in the theme's settings carry over.
+- **Auto** (default): Simply Dark while that theme is active, otherwise Stock.
+
+Set it in the app's **Settings** (under Steam plugin) or on the plugin's page in Millennium's settings. Both change `extrasplugin_settings.json`, and Steam picks up the change within a few seconds.
+
 ## How it reaches Steam
 
 - **Live saving (no restart):** when Steam is running with the plugin, **Save to Steam** sends your changes to the plugin, which applies them through Steam's own client API. That covers adding and removing shortcuts, name, target, start folder, launch options, hidden, all artwork and the logo position, and they update at once. The app and plugin pass these through request files in `extras\live`; the plugin writes a heartbeat there, so the app knows it's listening.

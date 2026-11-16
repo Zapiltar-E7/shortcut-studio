@@ -40,6 +40,10 @@
                    Text="Steam has nowhere to show a non-Steam game's description or achievements. The Shortcut Studio plugin for Millennium adds them to the game's library page, styled like Steam's own panels. You can unlock achievements there by clicking them."/>
         <TextBlock x:Name="PluginState" Margin="0,10,0,0"/>
         <Button x:Name="InstallBtn" Content="Install / repair the plugin" HorizontalAlignment="Left" Margin="0,10,0,0" Click="Install_Click"/>
+        <TextBlock Text="STYLE" Style="{StaticResource Label}" Margin="0,14,0,0"/>
+        <ComboBox x:Name="StyleBox" Width="260" Height="30" HorizontalAlignment="Left" DisplayMemberPath="Label" SelectedValuePath="Value"/>
+        <TextBlock Style="{StaticResource Dim}" Margin="0,6,0,0" TextWrapping="Wrap"
+                   Text="Colours of the plugin's own windows: the achievement list, launch-option dialog, unlock popup and achievement tiles. The page sections already follow your Steam theme. Auto uses Simply Dark when that Millennium theme is active, and Stock otherwise. Changes show in Steam within a few seconds."/>
 
         <TextBlock Text="Data" Style="{StaticResource SectionTitle}" Margin="0,24,0,0"/>
         <TextBlock Style="{StaticResource Dim}" Margin="0,4,0,0"

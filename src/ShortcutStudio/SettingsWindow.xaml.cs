@@ -17,6 +17,8 @@ public partial class SettingsWindow : Window
         KeyBox.Text = settings.SteamGridDbKey;
         RaUserBox.Text = settings.RaUser;
         RaKeyBox.Text = settings.RaKey;
+        StyleBox.ItemsSource = PluginStyle.Options.Select(o => new { o.Value, o.Label }).ToList();
+        StyleBox.SelectedValue = PluginStyle.Load();
 
         if (!Steam.HasMillennium)
         {
@@ -53,6 +55,11 @@ public partial class SettingsWindow : Window
         _settings.RaUser = RaUserBox.Text.Trim();
         _settings.RaKey = RaKeyBox.Text.Trim();
         _settings.Save();
+        if (StyleBox.SelectedValue is string style && style != PluginStyle.Load())
+        {
+            try { PluginStyle.Save(style); }
+            catch (Exception ex) { MessageBox.Show(this, $"Couldn't save the plugin style: {ex.Message}", "Settings"); }
+        }
         DialogResult = true;
     }
 }

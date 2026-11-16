@@ -1,5 +1,6 @@
 import { callable, DialogButton, Menu, MenuItem, MenuSeparator, ModalRoot, showContextMenu, showModal, ToggleField } from '@steambrew/client';
 import { h } from './panels';
+import { applyStyle } from './style';
 import { appName, cx, isBigPicture, libraryWindow, playButton, sel } from './steam';
 
 const TAG = '[shortcut-studio]';
@@ -48,31 +49,32 @@ async function loadMenu(appid: number): Promise<LaunchMenu | null> {
 
 const CSS = `
 .ss-lo-backdrop { position: fixed; inset: 0; z-index: 10001; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; }
-.ss-lo { width: 490px; background: linear-gradient(180deg, #2a2f38 0%, #1e2229 100%); box-shadow: 0 10px 40px rgba(0,0,0,.65); color: #dcdedf; border-radius: 2px; }
-.ss-lo-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 0 18px; font-size: 13px; color: #b8bcbf; }
-.ss-lo-x { cursor: pointer; color: #8b929a; font-size: 18px; line-height: 18px; padding: 2px 4px; }
+.ss-lo { width: 490px; background: var(--ss-picker); box-shadow: 0 10px 40px rgba(0,0,0,.65); color: var(--ss-text); border-radius: 2px; }
+.ss-lo-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 0 18px; font-size: 13px; color: var(--ss-text-2); }
+.ss-lo-x { cursor: pointer; color: var(--ss-dim); font-size: 18px; line-height: 18px; padding: 2px 4px; }
 .ss-lo-x:hover { color: #fff; }
 .ss-lo-body { padding: 14px 18px 18px; }
 .ss-lo-h { font-size: 14px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: #fff; margin-bottom: 10px; }
-.ss-lo-list { background: #191c22; border-radius: 2px; padding: 10px 12px; min-height: 160px; box-shadow: inset 0 1px 3px rgba(0,0,0,.4); }
-.ss-lo-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; margin-bottom: 6px; background: #2a2e36; border-radius: 2px; cursor: pointer; font-size: 14px; color: #dcdedf; }
-.ss-lo-row:hover { background: #343a44; }
-.ss-lo-radio { width: 12px; height: 12px; border-radius: 50%; background: #fff; flex-shrink: 0; box-shadow: inset 0 0 0 1px #8b929a; }
+.ss-lo-list { background: var(--ss-picker-list); border-radius: 2px; padding: 10px 12px; min-height: 160px; box-shadow: inset 0 1px 3px rgba(0,0,0,.4); }
+.ss-lo-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; margin-bottom: 6px; background: var(--ss-picker-row); border-radius: 2px; cursor: pointer; font-size: 14px; color: var(--ss-text); }
+.ss-lo-row:hover { background: var(--ss-picker-row-hover); }
+.ss-lo-radio { width: 12px; height: 12px; border-radius: 50%; background: #fff; flex-shrink: 0; box-shadow: inset 0 0 0 1px var(--ss-dim); }
 .ss-lo-row.ss-on .ss-lo-radio { background: #fff; box-shadow: inset 0 0 0 3px #1a9fff; }
 .ss-lo-check { display: flex; align-items: center; gap: 10px; margin: 14px 0 10px 6px; font-size: 14px; cursor: pointer; user-select: none; }
-.ss-lo-box { width: 22px; height: 22px; border-radius: 2px; background: #3d4450; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; }
+.ss-lo-box { width: 22px; height: 22px; border-radius: 2px; background: var(--ss-raised); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; }
 .ss-lo-check.ss-on .ss-lo-box { background: #1a9fff; }
-.ss-lo-note { font-size: 13px; color: #b8bcbf; line-height: 1.45; margin-bottom: 16px; }
+.ss-lo-note { font-size: 13px; color: var(--ss-text-2); line-height: 1.45; margin-bottom: 16px; }
 .ss-lo-btns { display: flex; justify-content: flex-end; gap: 18px; }
 .ss-lo-btn { min-width: 104px; padding: 12px 18px; border-radius: 2px; text-align: center; font-size: 16px; cursor: pointer; user-select: none; }
 .ss-lo-play { background: linear-gradient(90deg, #1a9fff, #1a8fe8); color: #fff; }
 .ss-lo-play:hover { background: #47b2ff; }
-.ss-lo-cancel { background: #3d4450; color: #dcdedf; }
-.ss-lo-cancel:hover { background: #4f5866; }
+.ss-lo-cancel { background: var(--ss-raised); color: var(--ss-text); }
+.ss-lo-cancel:hover { background: var(--ss-raised-hover); }
 `;
 
 /** Steam's "Select launch option" dialog. Resolves with the chosen index and whether to remember it, or null. */
 function pickOption(doc: Document, title: string, options: Option[]): Promise<{ index: number; remember: boolean } | null> {
+	applyStyle(doc);
 	if (!doc.getElementById('shortcut-studio-launch-css')) doc.head.append(h(doc, 'style', { id: 'shortcut-studio-launch-css' }, CSS));
 	return new Promise((resolve) => {
 		let selected = 0;
