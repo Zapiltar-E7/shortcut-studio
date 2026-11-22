@@ -22,7 +22,7 @@ Run **Shortcut Studio.exe**. It needs no install and no .NET.
 
 **SteamGridDB…** browses community art for each slot. Add a free API key in **Settings** first.
 
-##Game Support 
+## Game Support 
 Games are not inherently supported if the emulator and or recompilation doesn't already have achievements the plugin can find.
 
 If there is a game you want achievements for; open an issue and list the:
