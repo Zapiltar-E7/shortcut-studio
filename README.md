@@ -20,9 +20,21 @@ Run **Shortcut Studio.exe**. It needs no install and no .NET.
 | **Store page** | Short description, "About this game" (plain text or Steam store HTML), developer, publisher, release date, genres. |
 | **Achievements** | Name, description, unlocked and locked icons, hidden-until-unlocked, global unlock %, and unlocked state. Add, remove, reorder, unlock all or lock all. |
 
+| Details | Artwork |
+| --- | --- |
+| ![Details tab](docs/images/app-details.webp) | ![Artwork tab](docs/images/app-artwork.webp) |
+| **Store page** | **Achievements** |
+| ![Store page tab](docs/images/app-store-page.webp) | ![Achievements tab](docs/images/app-achievements.webp) |
+
 **Import from Steam…** searches the Steam store by name or appid. It copies that game's library art, store text and details, and its full achievement list onto the shortcut, including hidden achievements, icons and global percentages. This suits games that are also sold on Steam, such as one you own on another launcher. No API key is needed.
 
 **SteamGridDB…** browses community art for each slot. Add a free API key in **Settings** first.
+
+**Fetch info…** on the Store page tab searches the Steam store and Wikipedia, so console and emulated games are covered too. The result you pick fills the short description, About this game, developer, publisher, release date and genres.
+
+| SteamGridDB | Fetch info |
+| --- | --- |
+| ![SteamGridDB art picker](docs/images/app-steamgriddb.webp) | ![Fetch game info dialog](docs/images/app-fetch-info.webp) |
 
 ## Game Support 
 Games are not inherently supported if the emulator and or recompilation doesn't already have achievements the plugin can find.
