@@ -34,7 +34,6 @@ Getting as many games supported as possible comes only second to the fluid funct
 If a game you want already has an Issue open, please don't open a new issue. Reply to that one; and if you could even suggest achievements. I have not played every game so I won't know what triggers are achievement worthy and
 I don't think anyone wants to wait for me to 100% every game before it gets added to the plugin.
 
-
 ## Achievements
 
 Achievements can come from several places:
@@ -170,3 +169,8 @@ Just create a PR, list your changes and why they're a good addition if you're mo
 
 If it's just another game getting a data reader set up or an achievement list, make sure you test each achievement and that they properly trigger.
 
+## License
+
+Shortcut Studio is source-available under the [PolyForm Strict License 1.0.0](LICENSE.md). You may use it for free for any non-commercial purpose, such as on your own PC. You may not change it, build on its code, or share copies of it, except to send changes back to this repository as pull requests (see Contributing). Download it from this repository's [Releases](https://github.com/Zapiltar-E7/shortcut-studio/releases).
+
+The plugin runs on [Millennium](https://steambrew.app), which supplies its API (`@steambrew/client`) at runtime under its own license; none of Millennium's code is included in this repository or its releases.
