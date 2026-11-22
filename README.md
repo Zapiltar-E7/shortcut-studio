@@ -78,7 +78,9 @@ With two or more options, pressing Play anywhere in Steam (the play bar, the lib
 
 The game page's Play button also gets Steam's split arrow, as on real games. It opens a menu under the button with every option: pick one to make Play start it without asking (✓ marks the current one), or **Ask every time** to bring the dialog back.
 
-In **Big Picture** the dialog is a native Big Picture dialog: the controller moves between the options, A launches the focused one, B cancels, and **Always use this option** is a toggle. The split arrow on Play works there too, but only by touch or mouse; a controller can't reach it, so use the dialog's toggle or the app to set a default.
+<img src="docs/images/launch-menu.png" alt="The Play button's launch-option menu" width="60%">
+
+In **Big Picture** the dialog is a native Big Picture dialog: the controller moves between the options, A launches the focused one, B cancels, and **Always use this option** is a toggle. The split arrow on Play works there too, with the controller as well as by touch or mouse.
 
 ## Emulator trophies (RPCS3, shadPS4 and PS3 recompilations)
 
