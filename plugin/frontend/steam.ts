@@ -33,10 +33,16 @@ export const sel = (cls?: string) => (cls ? '.' + cls.split(' ')[0] : null);
 
 export const g = globalThis as any;
 
-/** The appid in the library route (/library/app/123), or null elsewhere. */
+/**
+ * The appid in the library route (/library/app/123) of the window we draw into, or null elsewhere.
+ * Big Picture has its own router: the desktop window's last location stays on whatever game was last opened
+ * there, so it must not be used while Big Picture is shown.
+ */
 export function currentAppId(): number | null {
-	const path: string | undefined = g.MainWindowBrowserManager?.m_lastLocation?.pathname;
-	const m = path?.match(/^\/library\/app\/(\d+)/);
+	const path: string | undefined = isBigPicture(libraryWindow())
+		? g.SteamUIStore?.WindowStore?.GamepadUIMainWindowInstance?.m_history?.location?.pathname
+		: g.MainWindowBrowserManager?.m_lastLocation?.pathname;
+	const m = path?.match(/^(?:\/routes)?\/library\/app\/(\d+)/);
 	return m ? Number(m[1]) : null;
 }
 

@@ -414,10 +414,21 @@ local function slot_result(dir, rules)
         local v = flag_value(caption, rules.modeFlag)
         if v and v ~= 0 then mode = "master" end
     end
+    -- A rule counts on a save of its own mode. Normal rules whose key has no master version (BotW's bosses, armour
+    -- sets, side quests) count on master saves too, since those achievements can only be earned one way.
+    local has_master = rules._has_master
+    if not has_master then
+        has_master = {}
+        for _, r in pairs(rules.achievements or {}) do
+            if type(r) == "table" and r.mode == "master" and r.key then has_master[r.key] = true end
+        end
+        rules._has_master = has_master
+    end
     local met, progress = {}, {}
     if game then
         for id, r in pairs(rules.achievements or {}) do
-            if type(r) == "table" and (r.mode or "normal") == mode then
+            local rmode = type(r) == "table" and (r.mode or "normal")
+            if rmode and (rmode == mode or (mode == "master" and rmode == "normal" and not has_master[r.key])) then
                 local ok = true
                 for _, c in ipairs(r.all or {}) do
                     if not rule_met(c, game, caption) then ok = false; break end

@@ -2,6 +2,8 @@ import { definePlugin, DropdownItem } from '@steambrew/client';
 import { currentStyle, lastPalette, onStyleChange, setStyle, startStyle, Style, STYLES } from './style';
 import { GameData, listGames, loadCapsule, loadGame, loadStamp, pollUnlocks, setUnlocked } from './data';
 import { achievementStat, achievementsSection, ensureStyles, gameInfoPanel, hasInfo, openAchievementList, showUnlockToast } from './panels';
+import { makeFocusable, pruneFocusable } from './bpnav';
+import { showSteamAchievementToast } from './steamtoast';
 import { startLaunchMenu, syncLaunchArrow } from './launch';
 import { startPlaytime } from './playtime';
 import { onLiveApplied, startLive } from './live';
@@ -94,6 +96,7 @@ async function preload() {
 }
 
 function removeAll(doc: Document) {
+	pruneFocusable(true);
 	doc.querySelectorAll('[data-ss]').forEach((el) => el.remove());
 	doc.querySelectorAll<HTMLElement>('[data-ss-hidden]').forEach((el) => {
 		el.style.display = '';
@@ -120,7 +123,7 @@ async function toggle(appid: number, doc: Document, a: GameData['achievements'][
 	if (result === undefined) return;
 	a.unlockedAt = result;
 	changed();
-	if (unlocking) showUnlockToast(doc, a);
+	if (unlocking && !showSteamAchievementToast(appid, a)) showUnlockToast(doc, a);
 }
 
 /**
@@ -146,6 +149,12 @@ function tick() {
 	const appid = currentAppId();
 
 	syncLaunchArrow(doc, appid != null && isShortcut(appid) ? appid : null);
+	if (isBigPicture(win)) {
+		// Our buttons become stops for the controller (see bpnav.ts).
+		pruneFocusable();
+		makeFocusable(win, doc.querySelector<HTMLElement>('[data-ss="launch-arrow"]'));
+		makeFocusable(win, doc.querySelector<HTMLElement>('[data-ss="achievements"] .ss-view'));
+	}
 	if (appid == null || !isShortcut(appid)) {
 		if (state) removeAll(doc);
 		state = null;
@@ -332,7 +341,8 @@ async function watchTrophies() {
 				ensureStyles(doc);
 				for (const id of fresh) {
 					const a = data.achievements.find((x) => x.id === id);
-					if (a) showUnlockToast(doc, a, appName(appid));
+					// Steam's own toast (in the game's overlay while it runs, with Steam's sound); ours if that fails.
+					if (a && !showSteamAchievementToast(appid, { ...a, unlockedAt: unlocks[id] ?? null })) showUnlockToast(doc, a, appName(appid));
 				}
 			}
 			console.log(TAG, `${fresh.length} new trophy unlock(s) for ${appid}`);

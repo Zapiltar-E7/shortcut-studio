@@ -1,6 +1,7 @@
 import { achievementSets, emulatorName, type Achievement, type AchievementSet, type GameData } from './data';
 import { applyStyle, lastPalette } from './style';
-import { ach, achIcon, appButton, cx, desc, header, section } from './steam';
+import { ach, achIcon, appButton, cx, desc, header, isBigPicture, section } from './steam';
+import { FocusTree, refocus } from './bpnav';
 
 /** Tiny DOM builder: h(doc, 'div', { class: 'x' }, child, 'text'). */
 export function h(doc: Document, tag: string, attrs: Record<string, string | undefined> = {}, ...children: (Node | string | null | undefined | false)[]): HTMLElement {
@@ -22,6 +23,9 @@ export const CSS = `
 .ss-icon.ss-hidden-lock { display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--ss-faint); background: var(--ss-tile-muted); }
 .ss-feat-icon { width: 48px; height: 48px; flex-shrink: 0; background: var(--ss-tile) center/cover no-repeat; }
 .ss-view { align-self: flex-end; }
+/* Big Picture: controller focus on View My Achievements. Steam's own focused style for this button only shrinks the
+   text, so match its other focused buttons instead: white, with normal-weight grey text at the same size. */
+.ss-section.ss-bp button.DialogButton.ss-view.gpfocus { background: #fff; color: var(--ss-raised); font-weight: 400; font-size: 16px; line-height: 20px; padding: 10px 24px; }
 .ss-info { padding: 14px 16px 18px; display: flex; gap: 28px; color: var(--ss-info); }
 .ss-info-main { flex: 1; min-width: 0; font-size: 13px; line-height: 1.55; }
 .ss-info-main .ss-short { font-size: 15px; color: var(--ss-text); margin-bottom: 12px; }
@@ -117,6 +121,15 @@ export const CSS = `
 .ss-grade-P { color: #b8d8ff; } .ss-grade-G { color: #e8c35a; } .ss-grade-S { color: #c9d0d6; } .ss-grade-B { color: #d4925a; }
 .ss-x { position: absolute; top: -12px; right: -14px; width: 50px; height: 50px; border-radius: 50%; background: var(--ss-close); border: 2px solid var(--ss-dim); cursor: pointer; z-index: 4; box-shadow: 0 2px 8px rgba(0,0,0,.5); }
 .ss-x:hover { background: var(--ss-faint); border-color: var(--ss-text); }
+/* Big Picture: the stop the controller is on, in Steam's focused style (white, or a lighter row). */
+.ss-x.gpfocus { background: #fff; border-color: #fff; }
+.ss-x.gpfocus::before, .ss-x.gpfocus::after { background: var(--ss-raised); }
+.ss-switch.gpfocus, .ss-filter.gpfocus { background: #fff; color: var(--ss-raised); border-radius: 2px; }
+.ss-switch.gpfocus { padding: 6px 8px; margin: -6px -8px; }
+.ss-filter.gpfocus::after { border-color: var(--ss-raised); }
+.ss-search.gpfocus { border-color: #fff; background: #fff; color: var(--ss-raised); }
+.ss-ach.gpfocus { background: var(--ss-raised); }
+.ss-ach.gpfocus .ss-ach-toggle { opacity: 1; }
 .ss-x::before, .ss-x::after { content: ''; position: absolute; left: 50%; top: 50%; width: 22px; height: 2px; background: var(--ss-text); }
 .ss-x::before { transform: translate(-50%, -50%) rotate(45deg); }
 .ss-x::after { transform: translate(-50%, -50%) rotate(-45deg); }
@@ -372,11 +385,23 @@ const globalStats = new Map<number, boolean>();
  * UNLOCKED ACHIEVEMENTS (newest first) and LOCKED ACHIEVEMENTS, with hidden locked ones folded into one row at the
  * end. Hand-made games can be locked/unlocked with a link on each row.
  */
+/** Closes the open achievement list properly (its controller focus included) before another one opens. */
+let closeOpenList: (() => void) | null = null;
+
 export function openAchievementList(doc: Document, appid: number, gameName: string, data: GameData, toggle: (a: Achievement) => Promise<void>, capsule = '') {
+	closeOpenList?.();
 	doc.querySelector('.ss-modal')?.remove();
 	const win = doc.defaultView;
+	const bp = isBigPicture(win);
+	let nav: FocusTree | null = null;
+	let watcher: MutationObserver | null = null;
 	const close = () => {
+		if (closeOpenList === close) closeOpenList = null;
+		watcher?.disconnect();
+		nav?.close();
+		nav = null;
 		modal.remove();
+		if (bp) refocus(doc.querySelector<HTMLElement>('[data-ss="achievements"] .ss-view'));
 		doc.removeEventListener('keydown', onKey, true);
 		doc.removeEventListener('click', closeMenu, true);
 		win?.removeEventListener('vgp_onbuttondown', onPad, true);
@@ -387,16 +412,12 @@ export function openAchievementList(doc: Document, appid: number, gameName: stri
 		e.stopPropagation();
 		close();
 	};
-	// Big Picture: controller buttons arrive as vgp_onbuttondown. B closes, the D-pad and bumpers scroll the list,
-	// and nothing reaches the page underneath while the list is open.
+	// Big Picture: B closes. The D-pad moves between the list's stops (its own focus tree, set up below).
 	const onPad = (e: Event) => {
-		const button = (e as CustomEvent).detail?.button;
-		const scroller = dialog.querySelector<HTMLElement>('.ss-scroll');
-		if (button === 2) close();
-		else if (scroller && (button === 9 || button === 10)) scroller.scrollBy({ top: button === 9 ? -160 : 160, behavior: 'smooth' });
-		else if (scroller && (button === 5 || button === 6)) scroller.scrollBy({ top: (button === 5 ? -1 : 1) * scroller.clientHeight * 0.9, behavior: 'smooth' });
+		if ((e as CustomEvent).detail?.button !== 2) return;
 		e.preventDefault();
 		e.stopPropagation();
+		close();
 	};
 
 	const synced = data.trophySource;
@@ -440,10 +461,19 @@ export function openAchievementList(doc: Document, appid: number, gameName: stri
 	/** A Steam-style dropdown. items() is read each time it opens; label(key) draws the closed state. */
 	const dropdown = <K,>(label: (key: K) => (Node | string)[], items: () => K[], onPick: (key: K) => void, initial: K) => {
 		const el = h(doc, 'div', { class: 'ss-filter' });
+		let current = initial;
 		const draw = (k: K) => el.replaceChildren(...label(k));
 		draw(initial);
 		el.addEventListener('click', (e) => {
 			e.stopPropagation();
+			if (bp) {
+				// With a controller, A steps to the next choice (no menu to navigate).
+				const keys = items();
+				current = keys[(keys.indexOf(current) + 1) % keys.length];
+				draw(current);
+				onPick(current);
+				return;
+			}
 			if (menu) return closeMenu();
 			menu = h(doc, 'div', { class: 'ss-menu' });
 			for (const k of items()) {
@@ -451,6 +481,7 @@ export function openAchievementList(doc: Document, appid: number, gameName: stri
 				item.addEventListener('click', (ev) => {
 					ev.stopPropagation();
 					closeMenu();
+					current = k;
 					draw(k);
 					onPick(k);
 				});
@@ -619,6 +650,41 @@ export function openAchievementList(doc: Document, appid: number, gameName: stri
 
 	render();
 	doc.body.append(modal);
+	closeOpenList = close;
+	if (bp && win) {
+		try {
+			nav = new FocusTree(win, dialog, 'ShortcutStudio_AchievementList');
+			const t = nav;
+			t.add(closeBtn);
+			t.add(controls, { row: true });
+			for (const c of [globalSwitch, setFilterEl, filterEl]) if (c.style.display !== 'none') t.add(c);
+			t.add(search, { onOk: () => search.focus() });
+			const rows = () => Array.from(list.querySelectorAll<HTMLElement>('.ss-ach'));
+			const addRows = () => {
+				for (const r of rows()) t.add(r, { onOk: () => (r.querySelector<HTMLElement>('.ss-ach-toggle') ?? r).click() });
+			};
+			addRows();
+			t.focus(rows()[0] ?? filterEl);
+			// The list is redrawn on every filter, search, reveal and lock change: swap its stops, and keep the
+			// controller on the same row number when the focused one was replaced.
+			watcher = new (win as any).MutationObserver((records: MutationRecord[]) => {
+				const removed: HTMLElement[] = [];
+				for (const rec of records)
+					for (const n of Array.from(rec.removedNodes))
+						if (n instanceof (win as any).HTMLElement) removed.push(...((n as HTMLElement).matches('.ss-ach') ? [n as HTMLElement] : Array.from((n as HTMLElement).querySelectorAll<HTMLElement>('.ss-ach'))));
+				const was = removed.findIndex((el) => el.classList.contains('gpfocus'));
+				t.prune();
+				addRows();
+				if (was >= 0 && !t.focused()) {
+					const now = rows();
+					t.focus(now[Math.min(was, now.length - 1)] ?? filterEl);
+				}
+			});
+			watcher!.observe(list, { childList: true, subtree: true });
+		} catch (e) {
+			console.warn('[Shortcut Studio] controller navigation for the achievement list failed', e);
+		}
+	}
 	return render;
 }
 
