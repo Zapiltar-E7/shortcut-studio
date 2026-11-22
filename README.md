@@ -159,13 +159,14 @@ Existing shortcuts keep their appid when you rename them or change the target, s
 
 Build the plugin first: the app embeds `plugin\dist`, which isn't kept in the repository.
 
+1. **Plugin** (`plugin`, Node 22): run `npm install`, then `npm run build`, then `sh stage.sh`.
+2. **App** (`src\ShortcutStudio`, WPF, .NET 8): `dotnet publish -c Release -o ..\publish`, then copy `publish\ShortcutStudio.exe` to the repository root as `Shortcut Studio.exe`.
+
+After any plugin change, rebuild the app too, so saving from the app never installs an older plugin.
+
 ## Contributing
 I am 100% open to contributions, the faster this app can get polished and have added game support the better.
 Just create a PR, list your changes and why they're a good addition if you're modifying the app or plugin behavior.
 
 If it's just another game getting a data reader set up or an achievement list, make sure you test each achievement and that they properly trigger.
 
-1. **Plugin** (`plugin`, Node 22): run `npm install`, then `npm run build`, then `sh stage.sh`.
-2. **App** (`src\ShortcutStudio`, WPF, .NET 8): `dotnet publish -c Release -o ..\publish`, then copy `publish\ShortcutStudio.exe` to the repository root as `Shortcut Studio.exe`.
-
-After any plugin change, rebuild the app too, so saving from the app never installs an older plugin.
