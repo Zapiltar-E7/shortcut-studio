@@ -22,6 +22,19 @@ Run **Shortcut Studio.exe**. It needs no install and no .NET.
 
 **SteamGridDB…** browses community art for each slot. Add a free API key in **Settings** first.
 
+##Game Support 
+Games are not inherently supported if the emulator and or recompilation doesn't already have achievements the plugin can find.
+
+If there is a game you want achievements for; open an issue and list the:
+ - Game
+ - Emulator/Recomp/Native PC Game
+ - If it has an achievement list already or if one needs to be made.
+
+Getting as many games supported as possible comes only second to the fluid functionality of the app; I rely on the users for issue reports, and game suggestions.
+If a game you want already has an Issue open, please don't open a new issue. Reply to that one; and if you could even suggest achievements. I have not played every game so I won't know what triggers are achievement worthy and
+I don't think anyone wants to wait for me to 100% every game before it gets added to the plugin.
+
+
 ## Achievements
 
 Achievements can come from several places:
@@ -93,6 +106,8 @@ Dusklight has its own achievements and writes them to `data\achievements.json` a
 ## RetroAchievements
 
 For games played through emulators that support RetroAchievements: RetroArch, PCSX2, DuckStation, PPSSPP, Dolphin, Flycast, melonDS, BizHawk and others.
+
+This plugin does not replace the need for RetroAchievement support in said emulators, you still need to be running a compatible rom in an emulator that has RetroAchievement support and is logged in properly.
 
 1. In **Settings**, enter your RetroAchievements username and Web API key. The key is at retroachievements.org/settings under **Keys**.
 2. On the **Achievements** tab, click **RetroAchievements…**. Pick the system (it's guessed from the shortcut's emulator), search for the game and import it.
