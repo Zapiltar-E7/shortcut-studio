@@ -2,6 +2,8 @@
 
 Makes any non-Steam game look and feel like an official one in your Steam library: name, program and launch settings, all five pieces of library art, an "About this game" section, playtime, launch options and achievements.
 
+![A non-Steam game's library page with Shortcut Studio: art, launch-option arrow, play stats, About this game, and achievements](docs/images/game-page-stock.webp)
+
 It works with anything you can add to Steam as a shortcut:
 - **Games from other launchers:** Epic, GOG, EA app, Ubisoft Connect, Battle.net, itch.io, the Xbox app, or standalone installs.
 - **Emulated games:** RetroArch, RPCS3, shadPS4, PCSX2, Dolphin, DuckStation, PPSSPP and other emulators.
@@ -42,6 +44,13 @@ Achievements can come from several places:
 - **Emulator trophies:** PlayStation trophy lists that sync unlocks from the emulator.
 - **RetroAchievements:** sets for retro games, synced from your RetroAchievements account.
 - **Save files:** rules that read a game's save data, for games with no achievement system of their own.
+
+The game page gets Steam's Achievements panel, and **View My Achievements** opens the full list:
+
+<p>
+  <img src="docs/images/achievements-panel-stock.png" alt="Achievements panel on the game page" width="38%" valign="top">
+  <img src="docs/images/achievement-list-stock.png" alt="Full achievement list with sets, filters and search" width="58%" valign="top">
+</p>
 
 ## Achievement sets (DLC)
 
@@ -133,6 +142,12 @@ The page sections use Steam's own classes, so they follow whatever Steam or Mill
 - **Stock:** stock Steam's blue-grey.
 - **Simply Dark:** the neutral greys of the Simply Dark Millennium theme. It uses the theme's own colour variables, so changes made in the theme's settings carry over.
 - **Auto** (default): Simply Dark while that theme is active, otherwise Stock.
+
+| Stock | Simply Dark |
+| --- | --- |
+| ![Game page, Stock](docs/images/game-page-stock.webp) | ![Game page, Simply Dark](docs/images/game-page-simply-dark.webp) |
+| ![Achievements panel, Stock](docs/images/achievements-panel-stock.png) | ![Achievements panel, Simply Dark](docs/images/achievements-panel-simply-dark.png) |
+| ![Achievement list, Stock](docs/images/achievement-list-stock.png) | ![Achievement list, Simply Dark](docs/images/achievement-list-simply-dark.png) |
 
 Set it in the app's **Settings** (under Steam plugin) or on the plugin's page in Millennium's settings. Both change `extrasplugin_settings.json`, and Steam picks up the change within a few seconds.
 
