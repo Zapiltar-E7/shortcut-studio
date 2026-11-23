@@ -2,7 +2,7 @@
 
 <https://polyformproject.org/licenses/strict/1.0.0>
 
-Required Notice: Copyright (c) 2026 Zapiltar-E7 (https://github.com/Zapiltar-E7)
+Required Notice: Copyright (c) 2026 Zapiltar (https://github.com/zapiltar)
 
 ## Acceptance
 

@@ -200,6 +200,6 @@ If it's just another game getting a data reader set up or an achievement list, m
 
 ## License
 
-Shortcut Studio is source-available under the [PolyForm Strict License 1.0.0](LICENSE.md). You may use it for free for any non-commercial purpose, such as on your own PC. You may not change it, build on its code, or share copies of it, except to send changes back to this repository as pull requests (see Contributing). Download it from this repository's [Releases](https://github.com/Zapiltar-E7/shortcut-studio/releases).
+Shortcut Studio is source-available under the [PolyForm Strict License 1.0.0](LICENSE.md). You may use it for free for any non-commercial purpose, such as on your own PC. You may not change it, build on its code, or share copies of it, except to send changes back to this repository as pull requests (see Contributing). Download it from this repository's [Releases](https://github.com/zapiltar/shortcut-studio/releases).
 
 The plugin runs on [Millennium](https://steambrew.app), which supplies its API (`@steambrew/client`) at runtime under its own license; none of Millennium's code is included in this repository or its releases.
