@@ -51,6 +51,55 @@ public partial class MainWindow : Window
         AccountBox.SelectedItem = signedIn is { PersonaName.Length: > 0 } ? signedIn
             : users.FirstOrDefault(u => u.AccountId == _settings.LastAccountId) ?? signedIn;
         UpdatePluginStatus();
+        _ = Updater.CleanUpAsync();
+        if (_settings.CheckForUpdates) _ = CheckForUpdateAsync(false);
+    }
+
+    // ---------- Updates ----------
+
+    UpdateInfo? _update;
+    bool _updating;
+
+    /// <summary>Looks for a newer release. showResult (from Settings' button): also say when there's none, or when GitHub can't be reached.</summary>
+    public async Task<UpdateInfo?> CheckForUpdateAsync(bool showResult)
+    {
+        try { _update = await Updater.CheckAsync(); }
+        catch (Exception ex)
+        {
+            if (showResult) MessageBox.Show(this, $"Couldn't reach GitHub to check for updates: {ex.Message}", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return null;
+        }
+        UpdateBtn.Content = _update == null ? "" : $"Update to {_update.Version.ToString(3)}";
+        UpdateBtn.ToolTip = _update == null ? null : $"You have {Updater.CurrentText}. Shortcut Studio {_update.Version.ToString(3)} is on GitHub.";
+        UpdateBtn.Visibility = _update == null ? Visibility.Collapsed : Visibility.Visible;
+        if (showResult && _update == null)
+            MessageBox.Show(this, $"You have the latest version ({Updater.CurrentText}).", Title, MessageBoxButton.OK, MessageBoxImage.Information);
+        return _update;
+    }
+
+    async void Update_Click(object sender, RoutedEventArgs e) => await InstallUpdateAsync(true);
+
+    public async Task InstallUpdateAsync(bool confirm)
+    {
+        if (_update is not { } update) return;
+        if (AnyDirty)
+        {
+            MessageBox.Show(this, "You have unsaved changes. Save or revert them first, then update.", Title, MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var ask = $"Update Shortcut Studio from {Updater.CurrentText} to {update.Version.ToString(3)}?\n\nIt downloads the new version from GitHub and restarts. The Steam plugin updates the next time you save.";
+        if (confirm && MessageBox.Show(this, ask, Title, MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+
+        string? exe = null;
+        await RunBusy("Downloading the update…", async () =>
+        {
+            var progress = new Progress<double>(p => SetBusy($"Downloading the update… {p:P0}"));
+            exe = await Updater.DownloadAndSwapAsync(update, progress);
+        });
+        if (exe == null) return;
+        _updating = true;
+        Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true });
+        Application.Current.Shutdown();
     }
 
     // ---------- Accounts & list ----------
@@ -1049,7 +1098,7 @@ public partial class MainWindow : Window
 
     void OnClosing(object? sender, CancelEventArgs e)
     {
-        if (!AnyDirty) return;
+        if (!AnyDirty || _updating) return;
         var r = MessageBox.Show(this, "You have unsaved changes. Save them to Steam before closing?", Title, MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
         if (r == MessageBoxResult.Cancel) e.Cancel = true;
         else if (r == MessageBoxResult.Yes)
@@ -1068,6 +1117,7 @@ public partial class MainWindow : Window
         var win = new SettingsWindow(_settings) { Owner = this };
         if (win.ShowDialog() == true && win.InstallPluginRequested) await SaveAsync(true);
         UpdatePluginStatus();
+        if (win.UpdateRequested) await InstallUpdateAsync(false);
     }
 
     void UpdatePluginStatus()

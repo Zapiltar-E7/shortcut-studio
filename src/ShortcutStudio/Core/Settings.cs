@@ -11,6 +11,8 @@ public sealed class AppSettings
     public uint LastAccountId { get; set; }
     /// <summary>The editor's hero banner is hidden, to show more of the lists below it.</summary>
     public bool HideBanner { get; set; }
+    /// <summary>Look for a newer release on GitHub each time the app starts.</summary>
+    public bool CheckForUpdates { get; set; } = true;
 
     static string FilePath => Path.Combine(ExtrasStore.Root, "settings.json");
 

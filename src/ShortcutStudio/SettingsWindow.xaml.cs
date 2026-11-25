@@ -9,6 +9,8 @@ public partial class SettingsWindow : Window
 {
     readonly AppSettings _settings;
     public bool InstallPluginRequested { get; private set; }
+    /// <summary>The user chose to update right away: the main window installs it once Settings closes.</summary>
+    public bool UpdateRequested { get; private set; }
 
     public SettingsWindow(AppSettings settings)
     {
@@ -19,6 +21,8 @@ public partial class SettingsWindow : Window
         RaKeyBox.Text = settings.RaKey;
         StyleBox.ItemsSource = PluginStyle.Options.Select(o => new { o.Value, o.Label }).ToList();
         StyleBox.SelectedValue = PluginStyle.Load();
+        VersionText.Text = $"Shortcut Studio {Updater.CurrentText}";
+        UpdateCheckBox.IsChecked = settings.CheckForUpdates;
 
         if (!Steam.HasMillennium)
         {
@@ -49,8 +53,24 @@ public partial class SettingsWindow : Window
         Save_Click(sender, e);
     }
 
+    async void CheckUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (Owner is not MainWindow main) return;
+        CheckUpdateBtn.IsEnabled = false;
+        CheckUpdateBtn.Content = "Checking…";
+        var update = await main.CheckForUpdateAsync(true);
+        CheckUpdateBtn.IsEnabled = true;
+        CheckUpdateBtn.Content = "Check for updates";
+        if (update == null) return;
+        var ask = $"Shortcut Studio {update.Version.ToString(3)} is available (you have {Updater.CurrentText}).\n\nUpdate now? Your settings are saved, then it downloads the new version and restarts. The Steam plugin updates the next time you save.";
+        if (MessageBox.Show(this, ask, "Settings", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+        UpdateRequested = true;
+        Save_Click(sender, e);
+    }
+
     void Save_Click(object sender, RoutedEventArgs e)
     {
+        _settings.CheckForUpdates = UpdateCheckBox.IsChecked == true;
         _settings.SteamGridDbKey = KeyBox.Text.Trim();
         _settings.RaUser = RaUserBox.Text.Trim();
         _settings.RaKey = RaKeyBox.Text.Trim();
