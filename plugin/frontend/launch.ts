@@ -48,7 +48,7 @@ async function loadMenu(appid: number): Promise<LaunchMenu | null> {
 }
 
 const CSS = `
-.ss-lo-backdrop { position: fixed; inset: 0; z-index: 10001; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; }
+.ss-lo-backdrop { position: fixed; inset: 0; z-index: 10001; -webkit-app-region: no-drag; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; }
 .ss-lo { width: 490px; background: var(--ss-picker); box-shadow: 0 10px 40px rgba(0,0,0,.65); color: var(--ss-text); border-radius: 2px; }
 .ss-lo-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 0 18px; font-size: 13px; color: var(--ss-text-2); }
 .ss-lo-x { cursor: pointer; color: var(--ss-dim); font-size: 18px; line-height: 18px; padding: 2px 4px; }

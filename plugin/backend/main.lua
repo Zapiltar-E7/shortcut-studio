@@ -867,6 +867,9 @@ end
 --- Everything the game page needs for one shortcut, or null.
 --- payload: { "appid": "123" }
 function GetGame(payload)
+    -- noIcons: the page fetches the icons in batches with GetIcons. Every icon in one reply made it too big for
+    -- games with hundreds of achievements (several thousand icons), and the page then showed nothing at all.
+    local no_icons = args(payload).noIcons == true
     local appid = tostring(args(payload).appid or "")
     local games = read_json(games_file()) or {}
     local game = games[appid]
@@ -892,8 +895,8 @@ function GetGame(payload)
             grade = a.grade or "",
             points = a.points,
             dlc = type(a.dlc) == "string" and a.dlc or "",
-            icon = icon_uri(appid, a.icon),
-            iconGray = icon_uri(appid, a.iconGray),
+            icon = no_icons and "" or icon_uri(appid, a.icon),
+            iconGray = no_icons and "" or icon_uri(appid, a.iconGray),
             unlockedAt = unlocks[a.id],
         }
     end
@@ -912,6 +915,37 @@ function GetGame(payload)
         trophySource = source,
         achievements = list,
     })
+end
+
+
+--- Icons for some of a game's achievements, as data: URIs. payload: { "appid": "123", "ids": ["ACH_1", ...] }
+--- Returns { "icons": { "ACH_1": { "icon": "data:...", "iconGray": "data:..." }, ... }, "done": n }: the first n of
+--- the ids were handled. Millennium refuses replies over 8 MB, so this stops once the icons reach ICON_BUDGET and
+--- the page asks again for the rest.
+local ICON_BUDGET = 3 * 1024 * 1024
+function GetIcons(payload)
+    local a = args(payload)
+    local appid = tostring(a.appid or "")
+    local game = (read_json(games_file()) or {})[appid]
+    local icons, done, size = {}, 0, 0
+    if type(game) ~= "table" or type(a.ids) ~= "table" then return json.encode({ icons = icons, done = 0 }) end
+    local by_id = {}
+    for _, ach in ipairs(game.achievements or {}) do
+        if ach.id ~= nil then by_id[tostring(ach.id)] = ach end
+    end
+    for _, id in ipairs(a.ids) do
+        if size >= ICON_BUDGET then break end
+        local ach = by_id[tostring(id)]
+        if ach then
+            local icon, gray = icon_uri(appid, ach.icon), icon_uri(appid, ach.iconGray)
+            -- Always take at least one, so the page moves on even past a single huge icon.
+            if done > 0 and size + #icon + #gray > ICON_BUDGET then break end
+            icons[tostring(id)] = { icon = icon, iconGray = gray }
+            size = size + #icon + #gray
+        end
+        done = done + 1
+    end
+    return json.encode({ icons = icons, done = done })
 end
 
 --- Locks or unlocks one achievement. payload: { "appid": "123", "id": "ACH_1", "unlocked": true }

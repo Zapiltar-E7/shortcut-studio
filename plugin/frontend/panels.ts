@@ -37,7 +37,9 @@ export const CSS = `
 .ss-info-row { margin-bottom: 10px; }
 .ss-info-row .ss-k { color: var(--ss-dim); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
 .ss-info-row .ss-v { color: #67c1f5; font-size: 13px; }
-.ss-modal { position: fixed; inset: 0; z-index: 9999; background: rgba(0, 0, 0, .72); display: flex; align-items: center; justify-content: center; }
+/* Steam's title bar is a window drag area: Windows takes clicks there before the page sees them, so in a short
+   window the close X (which pokes above the dialog) only worked on its lower edge. Opt the modal out of dragging. */
+.ss-modal { position: fixed; inset: 0; z-index: 9999; -webkit-app-region: no-drag; background: rgba(0, 0, 0, .72); display: flex; align-items: center; justify-content: center; }
 .ss-dialog { position: relative; width: min(1200px, 94vw); height: min(900px, 92vh); display: flex; flex-direction: column; background: var(--ss-dialog); box-shadow: 0 0 48px rgba(0,0,0,.75); color: var(--ss-text); border-radius: 4px; }
 .ss-scroll { flex: 1; overflow-y: auto; border-radius: 4px; }
 .ss-top { position: relative; padding: 40px 36px 24px 16px; overflow: hidden; }
@@ -119,7 +121,7 @@ export const CSS = `
 .ss-grade { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 1px 6px; border-radius: 2px; margin-left: 8px; vertical-align: 2px; background: rgba(255,255,255,.08); }
 .ss-grade-pts { color: #e5b143; }
 .ss-grade-P { color: #b8d8ff; } .ss-grade-G { color: #e8c35a; } .ss-grade-S { color: #c9d0d6; } .ss-grade-B { color: #d4925a; }
-.ss-x { position: absolute; top: -12px; right: -14px; width: 50px; height: 50px; border-radius: 50%; background: var(--ss-close); border: 2px solid var(--ss-dim); cursor: pointer; z-index: 4; box-shadow: 0 2px 8px rgba(0,0,0,.5); }
+.ss-x { position: absolute; top: -12px; right: -14px; width: 50px; height: 50px; border-radius: 50%; background: var(--ss-close); border: 2px solid var(--ss-dim); cursor: pointer; z-index: 4; box-shadow: 0 2px 8px rgba(0,0,0,.5); -webkit-app-region: no-drag; }
 .ss-x:hover { background: var(--ss-faint); border-color: var(--ss-text); }
 /* Big Picture: the stop the controller is on, in Steam's focused style (white, or a lighter row). */
 .ss-x.gpfocus { background: #fff; border-color: #fff; }

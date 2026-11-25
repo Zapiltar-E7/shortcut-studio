@@ -133,10 +133,50 @@ export async function pollUnlocks(running: number[] = []): Promise<Record<string
 const list = (v: unknown): any[] => (Array.isArray(v) ? v : v && typeof v === 'object' ? Object.values(v) : []);
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
 
+const iconsRpc = callable<[{ payload: string }], string>('GetIcons');
+
+/**
+ * Fills in the icons a batch at a time. Millennium refuses backend replies over 8 MB, so the backend sends as many
+ * as fit in a few MB and says how many ids it got through; this asks again from there. An icon whose batch fails
+ * stays on the plain trophy icon.
+ */
+async function loadIcons(appid: number, achievements: Achievement[]) {
+	const byId = new Map(achievements.map((a) => [a.id, a]));
+	const ids = achievements.map((a) => a.id);
+	let i = 0;
+	while (i < ids.length) {
+		let done = 0;
+		try {
+			const raw = JSON.parse(await iconsRpc({ payload: JSON.stringify({ appid: String(appid), ids: ids.slice(i) }) }));
+			const icons = raw && typeof raw.icons === 'object' ? raw.icons : {};
+			for (const [id, r] of Object.entries(icons as Record<string, any>)) {
+				const a = byId.get(id);
+				if (a && r && typeof r === 'object') {
+					a.icon = str(r.icon);
+					a.iconGray = str(r.iconGray);
+				}
+			}
+			done = Number(raw?.done) || 0;
+		} catch (e) {
+			console.error('[Shortcut Studio] loading achievement icons failed', e);
+		}
+		// Never stall: a failed or empty reply skips one achievement.
+		i += Math.max(1, done);
+	}
+}
+
 /** quiet: a background preload, so the backend skips the RetroAchievements refresh a page visit does. */
 export async function loadGame(appid: number, quiet = false): Promise<GameData | null> {
-	const raw = JSON.parse(await getGame({ payload: JSON.stringify({ appid: String(appid), quiet }) }));
+	// The icons come separately, in batches: all of them in one reply was too big for games with hundreds of
+	// achievements, and the page then showed nothing at all (issue #1).
+	const raw = JSON.parse(await getGame({ payload: JSON.stringify({ appid: String(appid), quiet, noIcons: true }) }));
 	if (!raw || typeof raw !== 'object') return null;
+	const data = toGameData(raw);
+	await loadIcons(appid, data.achievements);
+	return data;
+}
+
+function toGameData(raw: any): GameData {
 	return {
 		shortDescription: str(raw.shortDescription),
 		description: str(raw.description),
